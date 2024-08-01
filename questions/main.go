@@ -5,7 +5,7 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/grzadr/questions/question"
+	"github.com/grzadr/golearn/questions/question"
 )
 
 func main() {

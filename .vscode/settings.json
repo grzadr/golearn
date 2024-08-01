@@ -18,5 +18,9 @@
     ".env": "shellscript",
     "*.sh": "shellscript",
     ".secrets": "shellscript"
-  }
+  },
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": [
+    "--fast"
+  ]
 }
