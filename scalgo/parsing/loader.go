@@ -1,7 +1,10 @@
 // ReadFileContent reads the content of a Markdown file and returns it as a byte slice.
 package parsing
 
-import ("strings", "fmt")
+import (
+	"fmt"
+	"strings"
+)
 
 type ElementUnit interface {
 	ConvertToBaseUnit(value float64) float64
@@ -45,13 +48,15 @@ type Element struct {
 	Unit  ElementUnit
 }
 
-func (e Element) NewFromString(input string) (Element, error) {
+func NewFromString(input string) (Element, error) {
 	before, after, found := strings.Cut(input, ":")
 
 	if !found {
-		return fmt.Errorf("No colon found in input string")
+		return Element{}, fmt.Errorf("No colon found in input string")
 	}
 
 	label := strings.TrimSpace(before)
-	
+
+
+
 }
