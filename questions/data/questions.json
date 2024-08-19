@@ -1,0 +1,32 @@
+[
+    {
+        "question": "What is the mascot of the Go programming language?",
+        "options": [
+            "Dolphin",
+            "Gopher",
+            "Snake",
+            "Penguin"
+        ],
+        "correct_answer": 1
+    },
+    {
+        "question": "Which keyword is used to declare a variable in Go?",
+        "options": [
+            "var",
+            "let",
+            "const",
+            "def"
+        ],
+        "correct_answer": 0
+    },
+    {
+        "question": "What is the zero value for an integer in Go?",
+        "options": [
+            "nil",
+            "0",
+            "undefined",
+            "null"
+        ],
+        "correct_answer": 1
+    }
+]

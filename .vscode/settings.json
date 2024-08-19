@@ -1,0 +1,26 @@
+{
+  "editor.formatOnSave": true,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "editor.formatOnSaveMode": "file",
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "python.analysis.extraPaths": [
+    "src/*"
+  ],
+  "[github-actions-workflow]": {
+    "editor.defaultFormatter": "github.vscode-github-actions",
+    "editor.detectIndentation": false,
+    "editor.indentSize": 2
+  },
+  "files.associations": {
+    ".env": "shellscript",
+    "*.sh": "shellscript",
+    ".secrets": "shellscript"
+  },
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": [
+    "--fast"
+  ]
+}
