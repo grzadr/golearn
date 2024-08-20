@@ -6,6 +6,7 @@ GOTEST=$(GOCMD) test
 BINARY_NAME=scalgo
 BINARY_UNIX=$(BINARY_NAME)_unix
 BIN_DIR=bin
+COVER_DIR=coverage
 
 all: test build
 
@@ -22,6 +23,11 @@ lint:
 test: lint
 	$(GOTEST) -v ./...
 
+test-cover: test
+	mkdir -p $(COVER_DIR)
+	$(GOTEST) -coverprofile=$(COVER_DIR)/coverage.out ./...
+	go tool cover -html=$(COVER_DIR)/coverage.out
+
 clean:
 	$(GOCLEAN)
 	rm -rf $(BIN_DIR)
@@ -33,4 +39,4 @@ run: build
 build-linux: $(BIN_DIR)
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BIN_DIR)/$(BINARY_UNIX) -v
 
-.PHONY: all build lint test clean run build-linux
+.PHONY: all build lint test clean run build-linux test-cover
