@@ -1,6 +1,9 @@
 package parsing
 
 import (
+	"errors"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -174,7 +177,7 @@ func TestNewRecord(t *testing.T) {
 		t.Errorf("Expected value to be %f, got %f", value, record.Value)
 	}
 
-	if record.Unit.(*TimeUnit).getUnit() != int(Year) {
+	if record.Unit.getUnit() != int(Year) {
 		t.Errorf("Expected unit to be %d, got %d", Year, record.Unit.(*TimeUnit).getUnit())
 	}
 }
@@ -235,5 +238,127 @@ func TestNewRecordFromStringInvalidValue(t *testing.T) {
 
 	if err.Error() != "failed to create record: no matching unit found for invalid" {
 		t.Errorf("Expected error message 'failed to create record: no matching unit found for invalid', got '%s'", err.Error())
+	}
+}
+
+func TestNewRecordSliceFromReader(t *testing.T) {
+	input := `Label 1: 3.14 years
+Label 2: 42 days
+Label 3: 1.5 hours`
+	reader := strings.NewReader(input)
+
+	records, err := NewRecordSliceFromReader(reader)
+
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if len(records) != 3 {
+		t.Errorf("Expected 3 records, got %d", len(records))
+	}
+
+	// Check the first record
+	if records[0].Label != "Label 1" || records[0].Value != 3.14 || records[0].Unit.getUnit() != int(Year) {
+		t.Errorf("First record doesn't match expected values")
+	}
+
+	// Check the second record
+	if records[1].Label != "Label 2" || records[1].Value != 42 || records[1].Unit.getUnit() != int(Day) {
+		t.Errorf("Second record doesn't match expected values")
+	}
+
+	// Check the third record
+	if records[2].Label != "Label 3" || records[2].Value != 1.5 || records[2].Unit.getUnit() != int(Hour) {
+		t.Errorf("Third record doesn't match expected values")
+	}
+}
+
+func TestNewRecordSliceFromReaderEmptyInput(t *testing.T) {
+	reader := strings.NewReader("")
+
+	records, err := NewRecordSliceFromReader(reader)
+
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if len(records) != 0 {
+		t.Errorf("Expected 0 records, got %d", len(records))
+	}
+}
+
+func TestNewRecordSliceFromReaderInvalidInput(t *testing.T) {
+	input := `Label 1: 3.14 years
+Invalid line
+Label 3: 1.5 hours`
+	reader := strings.NewReader(input)
+
+	_, err := NewRecordSliceFromReader(reader)
+
+	if err == nil {
+		t.Error("Expected an error for invalid input, but got nil")
+	}
+}
+
+func TestNewRecordSliceFromFile(t *testing.T) {
+	// Create a temporary file for testing
+	content := `Label 1: 3.14 years
+Label 2: 42 days
+Label 3: 1.5 hours`
+	tmpfile, err := os.CreateTemp("", "test_record_file")
+	if err != nil {
+		t.Fatalf("Failed to create temporary file: %v", err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	if _, err := tmpfile.Write([]byte(content)); err != nil {
+		t.Fatalf("Failed to write to temporary file: %v", err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatalf("Failed to close temporary file: %v", err)
+	}
+
+	records, err := NewRecordSliceFromFile(tmpfile.Name())
+
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if len(records) != 3 {
+		t.Errorf("Expected 3 records, got %d", len(records))
+	}
+
+	// Check the first record
+	if records[0].Label != "Label 1" || records[0].Value != 3.14 || records[0].Unit.getUnit() != int(Year) {
+		t.Errorf("First record doesn't match expected values")
+	}
+}
+
+func TestNewRecordSliceFromFileNonExistentFile(t *testing.T) {
+	_, err := NewRecordSliceFromFile("non_existent_file.txt")
+
+	if err == nil {
+		t.Error("Expected an error for non-existent file, but got nil")
+	}
+}
+
+// errorReader is a custom io.Reader that always returns an error
+type errorReader struct{}
+
+func (er errorReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New("forced read error")
+}
+
+func TestNewRecordSliceFromReaderScannerError(t *testing.T) {
+	reader := errorReader{}
+
+	_, err := NewRecordSliceFromReader(reader)
+
+	if err == nil {
+		t.Error("Expected an error due to scanner failure, but got nil")
+	}
+
+	if err.Error() != "forced read error" {
+		t.Errorf("Expected error message 'forced read error', got '%s'", err.Error())
 	}
 }

@@ -2,7 +2,10 @@
 package parsing
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -162,6 +165,8 @@ type Record struct {
 	Unit  RecordUnit
 }
 
+// splitInputString splits an input string into a label, value, and unit
+// The input string should be in the format "label: value unit"
 func splitInputString(input string) (label string, value float64, unit string, err error) {
 	label, value_with_unit, found := strings.Cut(strings.TrimSpace(input), ":")
 
@@ -211,4 +216,34 @@ func NewRecordFromString(input string) (*Record, error) {
 	}
 
 	return record, nil
+}
+
+func NewRecordSliceFromReader(reader io.Reader) ([]*Record, error) {
+	records := make([]*Record, 0)
+	scanner := bufio.NewScanner(reader)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		record, err := NewRecordFromString(line)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+func NewRecordSliceFromFile(filename string) ([]*Record, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	return NewRecordSliceFromReader(file)
 }
