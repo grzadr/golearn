@@ -11,46 +11,28 @@ import (
 )
 
 type RecordUnit interface {
+	ConvertToUnit(value float64, unit int64) float64
 	ConvertToBaseUnit(value float64) float64
-	ConvertFromBaseUnit(value float64) float64
-	getUnit() int
+	getUnit() int64
 }
 
-type TimeUnits int
+type TimeUnits int64
 
 const (
-	Nanosecond TimeUnits = iota
-	Microsecond
-	Millisecond
-	Second
-	Minute
-	Hour
-	Day
-	Week
-	Month
-	Year
-	Decade
-	Century
-	Millennium
+	Missing    TimeUnits = 0
+	Second     TimeUnits = 1
+	Minute     TimeUnits = 60
+	Hour       TimeUnits = 3600
+	Day        TimeUnits = 86400    // 24 hours
+	Week       TimeUnits = 604800   // 7 days
+	Month      TimeUnits = 2592000  // 30 days
+	Year       TimeUnits = 31536000 // 365 days
+	Decade     TimeUnits = 315360000
+	Century    TimeUnits = 3153600000
+	Millennium TimeUnits = 31536000000
 )
 
 var timeUnitMap = map[string]TimeUnits{
-	// Nanosecond
-	"nanosecond":  Nanosecond,
-	"nanoseconds": Nanosecond,
-	"ns":          Nanosecond,
-
-	// Microsecond
-	"microsecond":  Microsecond,
-	"microseconds": Microsecond,
-	"μs":           Microsecond,
-	"us":           Microsecond,
-
-	// Millisecond
-	"millisecond":  Millisecond,
-	"milliseconds": Millisecond,
-	"ms":           Millisecond,
-
 	// Second
 	"second":  Second,
 	"seconds": Second,
@@ -126,18 +108,16 @@ func NewTimeUnit(input string) (RecordUnit, error) {
 	}, nil
 }
 
-func (t *TimeUnit) getUnit() int {
-	return int(t.Unit)
+func (t *TimeUnit) getUnit() int64 {
+	return int64(t.Unit)
 }
 
 func (t *TimeUnit) ConvertToBaseUnit(value float64) float64 {
-	// TODO implement conversion
-	return 0
+	return value * float64(t.Unit)
 }
 
-func (t *TimeUnit) ConvertFromBaseUnit(value float64) float64 {
-	// TODO implement conversion
-	return 0
+func (t *TimeUnit) ConvertToUnit(value float64, unit int64) float64 {
+	return t.ConvertToBaseUnit(value) / float64(unit)
 }
 
 func newRecordUnit(unit string) (RecordUnit, error) {
@@ -160,9 +140,10 @@ func newRecordUnit(unit string) (RecordUnit, error) {
 }
 
 type Record struct {
-	Label string
-	Value float64
-	Unit  RecordUnit
+	Label     string
+	Value     float64
+	BaseValue float64
+	Unit      RecordUnit
 }
 
 // splitInputString splits an input string into a label, value, and unit
@@ -196,9 +177,10 @@ func NewRecord(label string, value float64, unit_str string) (*Record, error) {
 		return nil, fmt.Errorf("failed to create record: %w", err)
 	}
 	return &Record{
-		Label: label,
-		Value: value,
-		Unit:  unit,
+		Label:     label,
+		Value:     value,
+		BaseValue: unit.ConvertToBaseUnit(value),
+		Unit:      unit,
 	}, nil
 }
 
@@ -218,32 +200,77 @@ func NewRecordFromString(input string) (*Record, error) {
 	return record, nil
 }
 
-func NewRecordSliceFromReader(reader io.Reader) ([]*Record, error) {
-	records := make([]*Record, 0)
+type RecordEnlistment struct {
+	Records   []*Record
+	ScaleUnit RecordUnit
+	Sorted    bool
+}
+
+var RecordEnlistmentSettingsMapper = map[string]func(*RecordEnlistment, string) error{
+	"@scale": func(enlistment *RecordEnlistment, value string) error {
+		unit, err := newRecordUnit(value)
+		if err != nil {
+			return err
+		}
+		enlistment.ScaleUnit = unit
+		return nil
+	},
+	"@sorted": func(enlistment *RecordEnlistment, value string) error {
+		enlistment.Sorted = value == "true"
+		return nil
+	},
+}
+
+func (enlistment *RecordEnlistment) ApplyRecordEnlistmentSetting(setting string) error {
+	name, value, _ := strings.Cut(setting, " ")
+	if mapper, found := RecordEnlistmentSettingsMapper[name]; found {
+		return mapper(enlistment, value)
+	}
+	return fmt.Errorf("Unknown setting %s", setting)
+}
+
+func NewRecordEnlistmentFromReader(reader io.Reader) (RecordEnlistment, error) {
+	enlistment := RecordEnlistment{
+		Records:   make([]*Record, 0),
+		ScaleUnit: nil,
+		Sorted:    false,
+	}
 	scanner := bufio.NewScanner(reader)
 
 	for scanner.Scan() {
 		line := scanner.Text()
+		if strings.HasPrefix(line, "#") {
+			// Skip comments
+			continue
+		}
+		if strings.HasPrefix(line, "@") {
+			// Parse settings
+			if err := enlistment.ApplyRecordEnlistmentSetting(line); err != nil {
+				return RecordEnlistment{}, err
+			}
+			continue
+		}
+
 		record, err := NewRecordFromString(line)
 		if err != nil {
-			return nil, err
+			return RecordEnlistment{}, err
 		}
-		records = append(records, record)
+		enlistment.Records = append(enlistment.Records, record)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return RecordEnlistment{}, err
 	}
 
-	return records, nil
+	return enlistment, nil
 }
 
-func NewRecordSliceFromFile(filename string) ([]*Record, error) {
+func NewRecordEnlistmentFromFile(filename string) (RecordEnlistment, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		return nil, err
+		return RecordEnlistment{}, err
 	}
 	defer file.Close()
 
-	return NewRecordSliceFromReader(file)
+	return NewRecordEnlistmentFromReader(file)
 }

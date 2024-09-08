@@ -8,14 +8,14 @@ import (
 )
 
 func TestParseTimeUnitValid(t *testing.T) {
-	unit, found := parseTimeUnit("nanosecond")
+	unit, found := parseTimeUnit("second")
 
 	if found != true {
 		t.Fatalf("Unexpected error: %t", found)
 	}
 
-	if unit != Nanosecond {
-		t.Errorf("Expected unit to be %d, got %d", Nanosecond, unit)
+	if unit != Second {
+		t.Errorf("Expected unit to be %d, got %d", Second, unit)
 	}
 }
 
@@ -32,14 +32,14 @@ func TestParseTimeUnitInvalid(t *testing.T) {
 }
 
 func TestNewTimeUnitValid(t *testing.T) {
-	unit, err := NewTimeUnit("nanosecond")
+	unit, err := NewTimeUnit("second")
 
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if TimeUnits(unit.getUnit()) != Nanosecond {
-		t.Errorf("Expected unit to be %d, got %d", Nanosecond, unit.getUnit())
+	if TimeUnits(unit.getUnit()) != Second {
+		t.Errorf("Expected unit to be %d, got %d", Second, unit.getUnit())
 	}
 }
 
@@ -56,22 +56,40 @@ func TestNewTimeUnitInvalid(t *testing.T) {
 }
 
 func TestTimeUnitgetUnit(t *testing.T) {
-	unit := TimeUnit{Unit: Nanosecond}
+	unit := TimeUnit{Unit: Second}
 
-	if unit.getUnit() != int(Nanosecond) {
-		t.Errorf("Expected unit to be %d, got %d", Nanosecond, unit.getUnit())
+	if unit.getUnit() != int64(Second) {
+		t.Errorf("Expected unit to be %d, got %d", Second, unit.getUnit())
+	}
+}
+
+func TestTimeUnitConvertToUnit(t *testing.T) {
+	unit := TimeUnit{Unit: Minute}
+	result := unit.ConvertToUnit(1.0, int64(Second))
+	expected := 60.0
+
+	if result != expected {
+		t.Errorf("Expected value to be %f, got %f", expected, result)
+	}
+}
+
+func TestTimeUnitConvertToBaseUnit(t *testing.T) {
+	unit := TimeUnit{Unit: Minute}
+
+	if unit.ConvertToBaseUnit(1.0) != 60.0 {
+		t.Errorf("Expected value to be 60.0, got %f", unit.ConvertToBaseUnit(1.0))
 	}
 }
 
 func TestNewRecordUnitValid(t *testing.T) {
-	unit, err := newRecordUnit("nanosecond")
+	unit, err := newRecordUnit("second")
 
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if TimeUnits(unit.(*TimeUnit).getUnit()) != Nanosecond {
-		t.Errorf("Expected unit to be %d, got %d", Nanosecond, unit.(*TimeUnit).getUnit())
+	if TimeUnits(unit.(*TimeUnit).getUnit()) != Second {
+		t.Errorf("Expected unit to be %d, got %d", Second, unit.(*TimeUnit).getUnit())
 	}
 }
 
@@ -177,8 +195,12 @@ func TestNewRecord(t *testing.T) {
 		t.Errorf("Expected value to be %f, got %f", value, record.Value)
 	}
 
-	if record.Unit.getUnit() != int(Year) {
+	if record.Unit.getUnit() != int64(Year) {
 		t.Errorf("Expected unit to be %d, got %d", Year, record.Unit.(*TimeUnit).getUnit())
+	}
+
+	if record.BaseValue != 3.14*float64(Year) {
+		t.Errorf("Expected base value to be %f, got %f", 3.14*float64(Year), record.BaseValue)
 	}
 }
 
@@ -210,7 +232,7 @@ func TestNewRecordFromString(t *testing.T) {
 		t.Errorf("Expected value to be %f, got %f", 3.14, record.Value)
 	}
 
-	if record.Unit.(*TimeUnit).getUnit() != int(Year) {
+	if record.Unit.(*TimeUnit).getUnit() != int64(Year) {
 		t.Errorf("Expected unit to be %d, got %d", Year, record.Unit.(*TimeUnit).getUnit())
 	}
 }
@@ -247,7 +269,9 @@ Label 2: 42 days
 Label 3: 1.5 hours`
 	reader := strings.NewReader(input)
 
-	records, err := NewRecordSliceFromReader(reader)
+	enlistment, err := NewRecordEnlistmentFromReader(reader)
+
+	records := enlistment.Records
 
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -258,17 +282,17 @@ Label 3: 1.5 hours`
 	}
 
 	// Check the first record
-	if records[0].Label != "Label 1" || records[0].Value != 3.14 || records[0].Unit.getUnit() != int(Year) {
+	if records[0].Label != "Label 1" || records[0].Value != 3.14 || records[0].Unit.getUnit() != int64(Year) {
 		t.Errorf("First record doesn't match expected values")
 	}
 
 	// Check the second record
-	if records[1].Label != "Label 2" || records[1].Value != 42 || records[1].Unit.getUnit() != int(Day) {
+	if records[1].Label != "Label 2" || records[1].Value != 42 || records[1].Unit.getUnit() != int64(Day) {
 		t.Errorf("Second record doesn't match expected values")
 	}
 
 	// Check the third record
-	if records[2].Label != "Label 3" || records[2].Value != 1.5 || records[2].Unit.getUnit() != int(Hour) {
+	if records[2].Label != "Label 3" || records[2].Value != 1.5 || records[2].Unit.getUnit() != int64(Hour) {
 		t.Errorf("Third record doesn't match expected values")
 	}
 }
@@ -276,7 +300,9 @@ Label 3: 1.5 hours`
 func TestNewRecordSliceFromReaderEmptyInput(t *testing.T) {
 	reader := strings.NewReader("")
 
-	records, err := NewRecordSliceFromReader(reader)
+	enlistment, err := NewRecordEnlistmentFromReader(reader)
+
+	records := enlistment.Records
 
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -293,7 +319,7 @@ Invalid line
 Label 3: 1.5 hours`
 	reader := strings.NewReader(input)
 
-	_, err := NewRecordSliceFromReader(reader)
+	_, err := NewRecordEnlistmentFromReader(reader)
 
 	if err == nil {
 		t.Error("Expected an error for invalid input, but got nil")
@@ -318,7 +344,9 @@ Label 3: 1.5 hours`
 		t.Fatalf("Failed to close temporary file: %v", err)
 	}
 
-	records, err := NewRecordSliceFromFile(tmpfile.Name())
+	enlistment, err := NewRecordEnlistmentFromFile(tmpfile.Name())
+
+	records := enlistment.Records
 
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -329,13 +357,13 @@ Label 3: 1.5 hours`
 	}
 
 	// Check the first record
-	if records[0].Label != "Label 1" || records[0].Value != 3.14 || records[0].Unit.getUnit() != int(Year) {
+	if records[0].Label != "Label 1" || records[0].Value != 3.14 || records[0].Unit.getUnit() != int64(Year) {
 		t.Errorf("First record doesn't match expected values")
 	}
 }
 
 func TestNewRecordSliceFromFileNonExistentFile(t *testing.T) {
-	_, err := NewRecordSliceFromFile("non_existent_file.txt")
+	_, err := NewRecordEnlistmentFromFile("non_existent_file.txt")
 
 	if err == nil {
 		t.Error("Expected an error for non-existent file, but got nil")
@@ -352,7 +380,7 @@ func (er errorReader) Read(p []byte) (n int, err error) {
 func TestNewRecordSliceFromReaderScannerError(t *testing.T) {
 	reader := errorReader{}
 
-	_, err := NewRecordSliceFromReader(reader)
+	_, err := NewRecordEnlistmentFromReader(reader)
 
 	if err == nil {
 		t.Error("Expected an error due to scanner failure, but got nil")
