@@ -63,6 +63,20 @@ func TestTimeUnitgetUnit(t *testing.T) {
 	}
 }
 
+func TestTimeUnitgetType(t *testing.T) {
+	unit := TimeUnit{Unit: Second}
+
+	if unit.getType() != UnknownUnitType {
+		t.Errorf("Expected type to be %d, got %d", UnknownUnitType, unit.getType())
+	}
+
+	unit.Type = TimeUnitType
+
+	if unit.getType() != TimeUnitType {
+		t.Errorf("Expected type to be %d, got %d", TimeUnitType, unit.getType())
+	}
+}
+
 func TestTimeUnitConvertToUnit(t *testing.T) {
 	unit := TimeUnit{Unit: Minute}
 	result := unit.ConvertToUnit(1.0, int64(Second))
@@ -191,10 +205,6 @@ func TestNewRecord(t *testing.T) {
 		t.Errorf("Expected label to be '%s', got '%s'", label, record.Label)
 	}
 
-	if record.Value != value {
-		t.Errorf("Expected value to be %f, got %f", value, record.Value)
-	}
-
 	if record.Unit.getUnit() != int64(Year) {
 		t.Errorf("Expected unit to be %d, got %d", Year, record.Unit.(*TimeUnit).getUnit())
 	}
@@ -226,10 +236,6 @@ func TestNewRecordFromString(t *testing.T) {
 
 	if record.Label != "Label 1" {
 		t.Errorf("Expected label to be '%s', got '%s'", "Label 1", record.Label)
-	}
-
-	if record.Value != 3.14 {
-		t.Errorf("Expected value to be %f, got %f", 3.14, record.Value)
 	}
 
 	if record.Unit.(*TimeUnit).getUnit() != int64(Year) {
@@ -282,17 +288,17 @@ Label 3: 1.5 hours`
 	}
 
 	// Check the first record
-	if records[0].Label != "Label 1" || records[0].Value != 3.14 || records[0].Unit.getUnit() != int64(Year) {
+	if records[0].Label != "Label 1" || records[0].Unit.getUnit() != int64(Year) {
 		t.Errorf("First record doesn't match expected values")
 	}
 
 	// Check the second record
-	if records[1].Label != "Label 2" || records[1].Value != 42 || records[1].Unit.getUnit() != int64(Day) {
+	if records[1].Label != "Label 2" || records[1].Unit.getUnit() != int64(Day) {
 		t.Errorf("Second record doesn't match expected values")
 	}
 
 	// Check the third record
-	if records[2].Label != "Label 3" || records[2].Value != 1.5 || records[2].Unit.getUnit() != int64(Hour) {
+	if records[2].Label != "Label 3" || records[2].Unit.getUnit() != int64(Hour) {
 		t.Errorf("Third record doesn't match expected values")
 	}
 }
@@ -330,7 +336,9 @@ func TestNewRecordSliceFromFile(t *testing.T) {
 	// Create a temporary file for testing
 	content := `Label 1: 3.14 years
 Label 2: 42 days
-Label 3: 1.5 hours`
+@scale day
+Label 3: 1.5 hours
+@sorted false`
 	tmpfile, err := os.CreateTemp("", "test_record_file")
 	if err != nil {
 		t.Fatalf("Failed to create temporary file: %v", err)
@@ -346,18 +354,92 @@ Label 3: 1.5 hours`
 
 	enlistment, err := NewRecordEnlistmentFromFile(tmpfile.Name())
 
-	records := enlistment.Records
-
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
+
+	if enlistment.ScaleUnit.getUnit() != int64(Day) {
+		t.Errorf("Expected scale unit to be %d, got %d", Day, enlistment.ScaleUnit.getUnit())
+	}
+
+	if enlistment.Sorted != false {
+		t.Errorf("Expected sorted to be %t, got %t", false, enlistment.Sorted)
+	}
+
+	records := enlistment.Records
 
 	if len(records) != 3 {
 		t.Errorf("Expected 3 records, got %d", len(records))
 	}
 
 	// Check the first record
-	if records[0].Label != "Label 1" || records[0].Value != 3.14 || records[0].Unit.getUnit() != int64(Year) {
+	if records[0].Label != "Label 1" || records[0].Unit.getUnit() != int64(Year) {
+		t.Errorf("First record doesn't match expected values")
+	}
+}
+
+func TestNewRecordSliceFromReaderInvalidUnknownSetting(t *testing.T) {
+	input := `Label 1: 3.14 years
+@unknown_setting
+Label 3: 1.5 hours`
+	reader := strings.NewReader(input)
+
+	_, err := NewRecordEnlistmentFromReader(reader)
+
+	if err == nil {
+		t.Error("Expected an error for unknown setting, but got nil")
+	}
+
+	if err.Error() != "Unknown setting @unknown_setting" {
+		t.Errorf("Expected error message 'Unknown setting @unknown_setting', got '%s'", err.Error())
+	}
+}
+
+func TestNewRecordSliceFromReaderInvaldSettingScaleUnit(t *testing.T) {
+	input := `Label 1: 3.14 years
+@scale invalid
+Label 3: 1.5 hours`
+	reader := strings.NewReader(input)
+
+	_, err := NewRecordEnlistmentFromReader(reader)
+
+	if err == nil {
+		t.Error("Expected an error for invalid scale unit, but got nil")
+	}
+
+	if err.Error() != "no matching unit found for invalid" {
+		t.Errorf("Expected error message 'no matching unit found for invalid', got '%s'", err.Error())
+	}
+}
+
+func TestNewRecordSliceFromReaderSkipComments(t *testing.T) {
+	input := `# This is a comment
+Label 1: 3.14 years
+# Another comment
+Label 2: 42 days
+@scale day
+# Label 3: 1.5 hours
+`
+	reader := strings.NewReader(input)
+
+	enlistment, err := NewRecordEnlistmentFromReader(reader)
+
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if enlistment.ScaleUnit.getUnit() != int64(Day) {
+		t.Errorf("Expected scale unit to be %d, got %d", Day, enlistment.ScaleUnit.getUnit())
+	}
+
+	records := enlistment.Records
+
+	if len(records) != 2 {
+		t.Errorf("Expected 2 records, got %d", len(records))
+	}
+
+	// Check the first record
+	if records[0].Label != "Label 1" || records[0].Unit.getUnit() != int64(Year) {
 		t.Errorf("First record doesn't match expected values")
 	}
 }

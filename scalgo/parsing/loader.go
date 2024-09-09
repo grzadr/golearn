@@ -5,7 +5,9 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -14,7 +16,15 @@ type RecordUnit interface {
 	ConvertToUnit(value float64, unit int64) float64
 	ConvertToBaseUnit(value float64) float64
 	getUnit() int64
+	getType() RecordUnitType
 }
+
+type RecordUnitType int
+
+const (
+	UnknownUnitType RecordUnitType = iota
+	TimeUnitType
+)
 
 type TimeUnits int64
 
@@ -93,6 +103,7 @@ func parseTimeUnit(s string) (TimeUnits, bool) {
 }
 
 type TimeUnit struct {
+	Type RecordUnitType
 	Unit TimeUnits
 }
 
@@ -104,12 +115,17 @@ func NewTimeUnit(input string) (RecordUnit, error) {
 	}
 
 	return &TimeUnit{
+		Type: TimeUnitType,
 		Unit: unit,
 	}, nil
 }
 
 func (t *TimeUnit) getUnit() int64 {
 	return int64(t.Unit)
+}
+
+func (t *TimeUnit) getType() RecordUnitType {
+	return t.Type
 }
 
 func (t *TimeUnit) ConvertToBaseUnit(value float64) float64 {
@@ -141,7 +157,6 @@ func newRecordUnit(unit string) (RecordUnit, error) {
 
 type Record struct {
 	Label     string
-	Value     float64
 	BaseValue float64
 	Unit      RecordUnit
 }
@@ -178,7 +193,6 @@ func NewRecord(label string, value float64, unit_str string) (*Record, error) {
 	}
 	return &Record{
 		Label:     label,
-		Value:     value,
 		BaseValue: unit.ConvertToBaseUnit(value),
 		Unit:      unit,
 	}, nil
@@ -202,8 +216,10 @@ func NewRecordFromString(input string) (*Record, error) {
 
 type RecordEnlistment struct {
 	Records   []*Record
+	RefRecord *Record
 	ScaleUnit RecordUnit
 	Sorted    bool
+	Reversed  bool
 }
 
 var RecordEnlistmentSettingsMapper = map[string]func(*RecordEnlistment, string) error{
@@ -219,6 +235,10 @@ var RecordEnlistmentSettingsMapper = map[string]func(*RecordEnlistment, string) 
 		enlistment.Sorted = value == "true"
 		return nil
 	},
+	"@reverse": func(enlistment *RecordEnlistment, value string) error {
+		enlistment.Reversed = value == "true"
+		return nil
+	},
 }
 
 func (enlistment *RecordEnlistment) ApplyRecordEnlistmentSetting(setting string) error {
@@ -229,11 +249,56 @@ func (enlistment *RecordEnlistment) ApplyRecordEnlistmentSetting(setting string)
 	return fmt.Errorf("Unknown setting %s", setting)
 }
 
+func (enlistment *RecordEnlistment) findRefRecord() *Record {
+	if enlistment.RefRecord != nil {
+		return enlistment.RefRecord
+	}
+
+	if enlistment.Sorted {
+		return enlistment.Records[0]
+	}
+
+	compareFunc := math.Max
+
+	if enlistment.Reversed {
+		compareFunc = math.Min
+	}
+
+	refRecord := enlistment.Records[0]
+
+	for _, record := range enlistment.Records[1:] {
+		compared := compareFunc(refRecord.BaseValue, record.BaseValue)
+
+		if refRecord.BaseValue != compared {
+			refRecord = record
+		}
+	}
+
+	return refRecord
+}
+
+func (re *RecordEnlistment) SortRecords() {
+	if len(re.Records) == 0 {
+		return
+	}
+
+	sort.Slice(re.Records, func(i, j int) bool {
+		if re.Reversed {
+			return re.Records[i].BaseValue > re.Records[j].BaseValue
+		}
+		return re.Records[i].BaseValue < re.Records[j].BaseValue
+	})
+
+	re.Sorted = true
+}
+
 func NewRecordEnlistmentFromReader(reader io.Reader) (RecordEnlistment, error) {
 	enlistment := RecordEnlistment{
 		Records:   make([]*Record, 0),
+		RefRecord: nil,
 		ScaleUnit: nil,
-		Sorted:    false,
+		Sorted:    true,
+		Reversed:  false,
 	}
 	scanner := bufio.NewScanner(reader)
 
@@ -260,6 +325,20 @@ func NewRecordEnlistmentFromReader(reader io.Reader) (RecordEnlistment, error) {
 
 	if err := scanner.Err(); err != nil {
 		return RecordEnlistment{}, err
+	}
+
+	if len(enlistment.Records) == 0 {
+		return RecordEnlistment{}, fmt.Errorf("No records found")
+	}
+
+	if enlistment.Sorted {
+		enlistment.SortRecords()
+	}
+
+	enlistment.RefRecord = enlistment.findRefRecord()
+
+	if enlistment.ScaleUnit == nil {
+		enlistment.ScaleUnit = enlistment.RefRecord.Unit
 	}
 
 	return enlistment, nil
