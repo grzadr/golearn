@@ -270,26 +270,26 @@ func TestNewRecordFromStringInvalidValue(t *testing.T) {
 }
 
 func TestNewRecordSliceFromReader(t *testing.T) {
-	input := `Label 1: 3.14 years
-Label 2: 42 days
-Label 3: 1.5 hours`
+	input := `Label 2: 42 days
+Label 3: 3.14 years
+Label 1: 1.5 hours`
 	reader := strings.NewReader(input)
 
 	enlistment, err := NewRecordEnlistmentFromReader(reader)
 
-	records := enlistment.Records
-
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
+
+	records := enlistment.Records
 
 	if len(records) != 3 {
 		t.Errorf("Expected 3 records, got %d", len(records))
 	}
 
 	// Check the first record
-	if records[0].Label != "Label 1" || records[0].Unit.getUnit() != int64(Year) {
-		t.Errorf("First record doesn't match expected values")
+	if records[2].Label != "Label 1" || records[2].Unit.getUnit() != int64(Hour) {
+		t.Errorf("First record '%s' doesn't match expected values", records[2].Label)
 	}
 
 	// Check the second record
@@ -298,7 +298,7 @@ Label 3: 1.5 hours`
 	}
 
 	// Check the third record
-	if records[2].Label != "Label 3" || records[2].Unit.getUnit() != int64(Hour) {
+	if records[0].Label != "Label 3" || records[0].Unit.getUnit() != int64(Year) {
 		t.Errorf("Third record doesn't match expected values")
 	}
 }
@@ -308,11 +308,11 @@ func TestNewRecordSliceFromReaderEmptyInput(t *testing.T) {
 
 	enlistment, err := NewRecordEnlistmentFromReader(reader)
 
-	records := enlistment.Records
-
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+	if err == nil || err.Error() != "No records found" {
+		t.Fatalf("Expected an error for empty input, but got %v", err)
 	}
+
+	records := enlistment.Records
 
 	if len(records) != 0 {
 		t.Errorf("Expected 0 records, got %d", len(records))
@@ -414,11 +414,11 @@ Label 3: 1.5 hours`
 
 func TestNewRecordSliceFromReaderSkipComments(t *testing.T) {
 	input := `# This is a comment
-Label 1: 3.14 years
+Label 3: 3.14 years
 # Another comment
 Label 2: 42 days
 @scale day
-# Label 3: 1.5 hours
+# Label 1: 1.5 hours
 `
 	reader := strings.NewReader(input)
 
@@ -439,7 +439,7 @@ Label 2: 42 days
 	}
 
 	// Check the first record
-	if records[0].Label != "Label 1" || records[0].Unit.getUnit() != int64(Year) {
+	if records[0].Label != "Label 3" || records[0].Unit.getUnit() != int64(Year) {
 		t.Errorf("First record doesn't match expected values")
 	}
 }
@@ -471,4 +471,100 @@ func TestNewRecordSliceFromReaderScannerError(t *testing.T) {
 	if err.Error() != "forced read error" {
 		t.Errorf("Expected error message 'forced read error', got '%s'", err.Error())
 	}
+}
+
+func TestRecordEnlistmentSettingsMapperScale(t *testing.T) {
+	enlistment := NewRecordEnlistmentDefault()
+	err := enlistment.ApplyRecordEnlistmentSetting("@scale day")
+
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if enlistment.ScaleUnit.getUnit() != int64(Day) {
+		t.Errorf("Expected scale unit to be %d, got %d", Day, enlistment.ScaleUnit.getUnit())
+	}
+}
+
+func TestRecordEnlistmentSettingsMapperSorted(t *testing.T) {
+	enlistment := NewRecordEnlistmentDefault()
+	err := enlistment.ApplyRecordEnlistmentSetting("@sorted false")
+
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if enlistment.Sorted != false {
+		t.Errorf("Expected sorted to be %t, got %t", false, enlistment.Sorted)
+	}
+}
+
+func TestRecordEnlistmentSettingsMapperReverse(t *testing.T) {
+	enlistment := NewRecordEnlistmentDefault()
+	err := enlistment.ApplyRecordEnlistmentSetting("@reverse true")
+
+	if err != nil {
+		t.Error("Unexpected error:", err)
+	}
+
+	if enlistment.Reversed != true {
+		t.Errorf("Expected reversed to be %t, got %t", true, enlistment.Reversed)
+	}
+}
+
+func TestRecordEnlistmentSettingsMapperInvalid(t *testing.T) {
+	enlistment := NewRecordEnlistmentDefault()
+	err := enlistment.ApplyRecordEnlistmentSetting("@invalid_setting")
+
+	if err == nil {
+		t.Error("Expected an error for invalid setting, but got nil")
+	}
+
+	if err.Error() != "Unknown setting @invalid_setting" {
+		t.Errorf("Expected error message 'Unknown setting @invalid_setting', got '%s'", err.Error())
+	}
+}
+
+func TestSortRecords(t *testing.T) {
+	enlistment := RecordEnlistment{
+		Records: []*Record{
+			{Label: "Label 1", BaseValue: 1.0},
+			{Label: "Label 3", BaseValue: 3.0},
+			{Label: "Label 2", BaseValue: 2.0},
+		},
+	}
+
+	enlistment.SortRecords()
+
+	records := enlistment.Records
+
+	if records[0].Label != "Label 3" || records[1].Label != "Label 2" || records[2].Label != "Label 1" {
+		t.Errorf("Records are not sorted correctly")
+	}
+}
+
+func TestRecordEnlistmentFindRefRecord(t *testing.T) {
+	enlistment := RecordEnlistment{
+		Records: []*Record{
+			{Label: "Label 1", BaseValue: 1.0},
+			{Label: "Label 3", BaseValue: 3.0},
+			{Label: "Label 2", BaseValue: 2.0},
+		},
+	}
+
+	refRecord := enlistment.findRefRecord()
+	expected := "Label 3"
+
+	if refRecord.Label != expected {
+		t.Errorf("Expected ref record to be '%s', got '%s'", expected, refRecord.Label)
+	}
+
+	enlistment.Sorted = true
+	refRecord = enlistment.findRefRecord()
+	expected = "Label 1"
+
+	if refRecord.Label != expected {
+		t.Errorf("Expected ref record to be '%s', got '%s'", expected, refRecord.Label)
+	}
+
 }

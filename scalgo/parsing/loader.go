@@ -222,6 +222,16 @@ type RecordEnlistment struct {
 	Reversed  bool
 }
 
+func NewRecordEnlistmentDefault() *RecordEnlistment {
+	return &RecordEnlistment{
+		Records:   make([]*Record, 0, 32),
+		RefRecord: nil,
+		ScaleUnit: nil,
+		Sorted:    true,
+		Reversed:  false,
+	}
+}
+
 var RecordEnlistmentSettingsMapper = map[string]func(*RecordEnlistment, string) error{
 	"@scale": func(enlistment *RecordEnlistment, value string) error {
 		unit, err := newRecordUnit(value)
@@ -284,22 +294,16 @@ func (re *RecordEnlistment) SortRecords() {
 
 	sort.Slice(re.Records, func(i, j int) bool {
 		if re.Reversed {
-			return re.Records[i].BaseValue > re.Records[j].BaseValue
+			return re.Records[i].BaseValue < re.Records[j].BaseValue
 		}
-		return re.Records[i].BaseValue < re.Records[j].BaseValue
+		return re.Records[i].BaseValue > re.Records[j].BaseValue
 	})
 
 	re.Sorted = true
 }
 
 func NewRecordEnlistmentFromReader(reader io.Reader) (RecordEnlistment, error) {
-	enlistment := RecordEnlistment{
-		Records:   make([]*Record, 0),
-		RefRecord: nil,
-		ScaleUnit: nil,
-		Sorted:    true,
-		Reversed:  false,
-	}
+	enlistment := NewRecordEnlistmentDefault()
 	scanner := bufio.NewScanner(reader)
 
 	for scanner.Scan() {
@@ -341,7 +345,7 @@ func NewRecordEnlistmentFromReader(reader io.Reader) (RecordEnlistment, error) {
 		enlistment.ScaleUnit = enlistment.RefRecord.Unit
 	}
 
-	return enlistment, nil
+	return *enlistment, nil
 }
 
 func NewRecordEnlistmentFromFile(filename string) (RecordEnlistment, error) {
