@@ -525,7 +525,7 @@ func TestRecordEnlistmentSettingsMapperInvalid(t *testing.T) {
 	}
 }
 
-func TestSortRecords(t *testing.T) {
+func TestRecordEnlistmentSortRecords(t *testing.T) {
 	enlistment := RecordEnlistment{
 		Records: []*Record{
 			{Label: "Label 1", BaseValue: 1.0},
@@ -539,6 +539,33 @@ func TestSortRecords(t *testing.T) {
 	records := enlistment.Records
 
 	if records[0].Label != "Label 3" || records[1].Label != "Label 2" || records[2].Label != "Label 1" {
+		t.Errorf("Records are not sorted correctly")
+	}
+}
+
+func TestRecordEnlistmentSortRecordsEmpty(t *testing.T) {
+	enlistment := RecordEnlistment{
+		Records: []*Record{},
+	}
+
+	enlistment.SortRecords()
+}
+
+func TestRecordEnlistmentSortRecordsReversed(t *testing.T) {
+	enlistment := RecordEnlistment{
+		Records: []*Record{
+			{Label: "Label 1", BaseValue: 1.0},
+			{Label: "Label 3", BaseValue: 3.0},
+			{Label: "Label 2", BaseValue: 2.0},
+		},
+		Reversed: true,
+	}
+
+	enlistment.SortRecords()
+
+	records := enlistment.Records
+
+	if records[0].Label != "Label 1" || records[1].Label != "Label 2" || records[2].Label != "Label 3" {
 		t.Errorf("Records are not sorted correctly")
 	}
 }
@@ -558,13 +585,58 @@ func TestRecordEnlistmentFindRefRecord(t *testing.T) {
 	if refRecord.Label != expected {
 		t.Errorf("Expected ref record to be '%s', got '%s'", expected, refRecord.Label)
 	}
+}
+
+func TestRecordEnlistmentFindRefRecordSorted(t *testing.T) {
+	enlistment := RecordEnlistment{
+		Records: []*Record{
+			{Label: "Label 1", BaseValue: 1.0},
+			{Label: "Label 3", BaseValue: 3.0},
+			{Label: "Label 2", BaseValue: 2.0},
+		},
+	}
 
 	enlistment.Sorted = true
-	refRecord = enlistment.findRefRecord()
-	expected = "Label 1"
+	refRecord := enlistment.findRefRecord()
+	expected := "Label 1"
 
 	if refRecord.Label != expected {
 		t.Errorf("Expected ref record to be '%s', got '%s'", expected, refRecord.Label)
 	}
+}
 
+func TestRecordEnlistmentFindRefRecordExisting(t *testing.T) {
+	enlistment := RecordEnlistment{
+		Records: []*Record{
+			{Label: "Label 1", BaseValue: 1.0},
+			{Label: "Label 3", BaseValue: 3.0},
+			{Label: "Label 2", BaseValue: 2.0},
+		},
+	}
+
+	enlistment.RefRecord = enlistment.Records[2]
+	refRecord := enlistment.findRefRecord()
+	expected := "Label 2"
+
+	if refRecord.Label != expected {
+		t.Errorf("Expected ref record to be '%s', got '%s'", expected, refRecord.Label)
+	}
+}
+
+func TestRecordEnlistmentFindRefRecordReversed(t *testing.T) {
+	enlistment := RecordEnlistment{
+		Records: []*Record{
+			{Label: "Label 1", BaseValue: 1.0},
+			{Label: "Label 3", BaseValue: 3.0},
+			{Label: "Label 2", BaseValue: 2.0},
+		},
+	}
+
+	enlistment.Reversed = true
+	refRecord := enlistment.findRefRecord()
+	expected := "Label 1"
+
+	if refRecord.Label != expected {
+		t.Errorf("Expected ref record to be '%s', got '%s'", expected, refRecord.Label)
+	}
 }
