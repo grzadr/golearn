@@ -302,7 +302,7 @@ func (re *RecordEnlistment) SortRecords() {
 	re.Sorted = true
 }
 
-func NewRecordEnlistmentFromReader(reader io.Reader) (RecordEnlistment, error) {
+func ScanReaderIntoEnlistment(reader io.Reader) (RecordEnlistment, error) {
 	enlistment := NewRecordEnlistmentDefault()
 	scanner := bufio.NewScanner(reader)
 
@@ -331,6 +331,15 @@ func NewRecordEnlistmentFromReader(reader io.Reader) (RecordEnlistment, error) {
 		return RecordEnlistment{}, err
 	}
 
+	return *enlistment, nil
+}
+
+func NewRecordEnlistmentFromReader(reader io.Reader) (RecordEnlistment, error) {
+	enlistment, err := ScanReaderIntoEnlistment(reader)
+	if err != nil {
+		return RecordEnlistment{}, err
+	}
+
 	if len(enlistment.Records) == 0 {
 		return RecordEnlistment{}, fmt.Errorf("No records found")
 	}
@@ -345,7 +354,7 @@ func NewRecordEnlistmentFromReader(reader io.Reader) (RecordEnlistment, error) {
 		enlistment.ScaleUnit = enlistment.RefRecord.Unit
 	}
 
-	return *enlistment, nil
+	return enlistment, nil
 }
 
 func NewRecordEnlistmentFromFile(filename string) (RecordEnlistment, error) {
