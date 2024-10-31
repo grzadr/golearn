@@ -12,21 +12,24 @@ import (
 	"strings"
 )
 
+type RecordValueUnit uint64
+type RecordValue float64
+
+type RecordValueType int
+
 type RecordUnit interface {
-	ConvertToUnit(value float64, unit int64) float64
-	ConvertToBaseUnit(value float64) float64
-	getUnit() int64
-	getType() RecordUnitType
+	ConvertToUnit(value RecordValue, unit RecordValueUnit) RecordValue
+	ConvertToBaseUnit(value RecordValue) RecordValue
+	getUnit() RecordValueUnit
+	getType() RecordValueType
 }
 
-type RecordUnitType int
-
 const (
-	UnknownUnitType RecordUnitType = iota
+	UnknownUnitType RecordValueType = iota
 	TimeUnitType
 )
 
-type TimeUnits int64
+type TimeUnits RecordValueUnit
 
 const (
 	Missing    TimeUnits = 0
@@ -103,7 +106,7 @@ func parseTimeUnit(s string) (TimeUnits, bool) {
 }
 
 type TimeUnit struct {
-	Type RecordUnitType
+	Type RecordValueType
 	Unit TimeUnits
 }
 
@@ -120,20 +123,20 @@ func NewTimeUnit(input string) (RecordUnit, error) {
 	}, nil
 }
 
-func (t *TimeUnit) getUnit() int64 {
-	return int64(t.Unit)
+func (t *TimeUnit) getUnit() RecordValueUnit {
+	return RecordValueUnit(t.Unit)
 }
 
-func (t *TimeUnit) getType() RecordUnitType {
+func (t *TimeUnit) getType() RecordValueType {
 	return t.Type
 }
 
-func (t *TimeUnit) ConvertToBaseUnit(value float64) float64 {
-	return value * float64(t.Unit)
+func (t *TimeUnit) ConvertToBaseUnit(value RecordValue) RecordValue {
+	return value * RecordValue(t.Unit)
 }
 
-func (t *TimeUnit) ConvertToUnit(value float64, unit int64) float64 {
-	return t.ConvertToBaseUnit(value) / float64(unit)
+func (t *TimeUnit) ConvertToUnit(value RecordValue, unit RecordValueUnit) RecordValue {
+	return t.ConvertToBaseUnit(value) / RecordValue(unit)
 }
 
 func newRecordUnit(unit string) (RecordUnit, error) {
@@ -157,13 +160,13 @@ func newRecordUnit(unit string) (RecordUnit, error) {
 
 type Record struct {
 	Label     string
-	BaseValue float64
+	BaseValue RecordValue
 	Unit      RecordUnit
 }
 
 // splitInputString splits an input string into a label, value, and unit
 // The input string should be in the format "label: value unit"
-func splitInputString(input string) (label string, value float64, unit string, err error) {
+func splitInputString(input string) (label string, value RecordValue, unit_str string, err error) {
 	label, value_with_unit, found := strings.Cut(strings.TrimSpace(input), ":")
 
 	if !found {
@@ -174,19 +177,22 @@ func splitInputString(input string) (label string, value float64, unit string, e
 		return "", 0, "", fmt.Errorf("No label found in input string")
 	}
 
-	value_str, unit, _ := strings.Cut(strings.TrimSpace(value_with_unit), " ")
+	value_str, unit_str, _ := strings.Cut(strings.TrimSpace(value_with_unit), " ")
 
-	value, err = strconv.ParseFloat(value_str, 64)
+	value_f64, err := strconv.ParseFloat(value_str, 64)
 
 	if err != nil {
 		return "", 0, "", err
 	}
 
-	return label, value, unit, nil
+	return label, RecordValue(value_f64), unit_str, nil
 }
 
 // NewRecord creates a new Record with the given label, value, and unit string
-func NewRecord(label string, value float64, unit_str string) (*Record, error) {
+func NewRecord(label string, value RecordValue, unit_str string) (*Record, error) {
+	if value <= 0 {
+		return nil, fmt.Errorf("value must be greater than 0")
+	}
 	unit, err := newRecordUnit(unit_str)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create record: %w", err)
@@ -212,6 +218,10 @@ func NewRecordFromString(input string) (*Record, error) {
 	}
 
 	return record, nil
+}
+
+func (r *Record) Scale(ref *Record, unit RecordValueUnit) RecordValue {
+	return r.BaseValue / ref.BaseValue * RecordValue(unit)
 }
 
 type RecordEnlistment struct {
@@ -277,9 +287,9 @@ func (enlistment *RecordEnlistment) findRefRecord() *Record {
 	refRecord := enlistment.Records[0]
 
 	for _, record := range enlistment.Records[1:] {
-		compared := compareFunc(refRecord.BaseValue, record.BaseValue)
+		compared := compareFunc(float64(refRecord.BaseValue), float64(record.BaseValue))
 
-		if refRecord.BaseValue != compared {
+		if refRecord.BaseValue != RecordValue(compared) {
 			refRecord = record
 		}
 	}
@@ -302,17 +312,25 @@ func (re *RecordEnlistment) SortRecords() {
 	re.Sorted = true
 }
 
+func (re *RecordEnlistment) ScaleRecords() {
+	for _, record := range re.Records {
+		record.BaseValue = record.Scale(re.RefRecord, re.ScaleUnit.getUnit())
+	}
+}
+
+var CommentPrefix = "#"
+var SettingPrefix = "@"
+
 func ScanReaderIntoEnlistment(reader io.Reader) (RecordEnlistment, error) {
 	enlistment := NewRecordEnlistmentDefault()
 	scanner := bufio.NewScanner(reader)
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.HasPrefix(line, "#") {
-			// Skip comments
+		if strings.HasPrefix(line, CommentPrefix) {
 			continue
 		}
-		if strings.HasPrefix(line, "@") {
+		if strings.HasPrefix(line, SettingPrefix) {
 			// Parse settings
 			if err := enlistment.ApplyRecordEnlistmentSetting(line); err != nil {
 				return RecordEnlistment{}, err

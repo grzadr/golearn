@@ -58,7 +58,7 @@ func TestNewTimeUnitInvalid(t *testing.T) {
 func TestTimeUnitgetUnit(t *testing.T) {
 	unit := TimeUnit{Unit: Second}
 
-	if unit.getUnit() != int64(Second) {
+	if unit.getUnit() != RecordValueUnit(Second) {
 		t.Errorf("Expected unit to be %d, got %d", Second, unit.getUnit())
 	}
 }
@@ -79,8 +79,8 @@ func TestTimeUnitgetType(t *testing.T) {
 
 func TestTimeUnitConvertToUnit(t *testing.T) {
 	unit := TimeUnit{Unit: Minute}
-	result := unit.ConvertToUnit(1.0, int64(Second))
-	expected := 60.0
+	result := unit.ConvertToUnit(1.0, RecordValueUnit(Second))
+	expected := RecordValue(60.0)
 
 	if result != expected {
 		t.Errorf("Expected value to be %f, got %f", expected, result)
