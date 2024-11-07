@@ -12,40 +12,40 @@ import (
 	"strings"
 )
 
-type RecordValueUnit uint64
-type RecordValue float64
+type MeasureUnit uint64
+type MeasureValue float64
 
-type RecordValueType int
+type MeasureUnitType uint
 
-type RecordUnit interface {
-	ConvertToUnit(value RecordValue, unit RecordValueUnit) RecordValue
-	ConvertToBaseUnit(value RecordValue) RecordValue
-	getUnit() RecordValueUnit
-	getType() RecordValueType
+type Measure interface {
+	ConvertToUnit(value MeasureValue, unit MeasureUnit) MeasureValue
+	ConvertToBaseUnit(value MeasureValue) MeasureValue
+	getUnit() MeasureUnit
+	getType() MeasureUnitType
 }
 
 const (
-	UnknownUnitType RecordValueType = iota
+	UnknownUnitType MeasureUnitType = iota
 	TimeUnitType
 )
 
-type TimeUnits RecordValueUnit
+type TimeEntryUnit MeasureUnit
 
 const (
-	Missing    TimeUnits = 0
-	Second     TimeUnits = 1
-	Minute     TimeUnits = 60
-	Hour       TimeUnits = 3600
-	Day        TimeUnits = 86400    // 24 hours
-	Week       TimeUnits = 604800   // 7 days
-	Month      TimeUnits = 2592000  // 30 days
-	Year       TimeUnits = 31536000 // 365 days
-	Decade     TimeUnits = 315360000
-	Century    TimeUnits = 3153600000
-	Millennium TimeUnits = 31536000000
+	Missing    TimeEntryUnit = 0
+	Second     TimeEntryUnit = 1
+	Minute     TimeEntryUnit = 60
+	Hour       TimeEntryUnit = 3600
+	Day        TimeEntryUnit = 86400    // 24 hours
+	Week       TimeEntryUnit = 604800   // 7 days
+	Month      TimeEntryUnit = 2592000  // 30 days
+	Year       TimeEntryUnit = 31536000 // 365 days
+	Decade     TimeEntryUnit = 315360000
+	Century    TimeEntryUnit = 3153600000
+	Millennium TimeEntryUnit = 31536000000
 )
 
-var timeUnitMap = map[string]TimeUnits{
+var timeUnitMap = map[string]TimeEntryUnit{
 	// Second
 	"second":  Second,
 	"seconds": Second,
@@ -100,51 +100,52 @@ var timeUnitMap = map[string]TimeUnits{
 }
 
 // ParseTimeUnit converts a string to a TimeUnits constant
-func parseTimeUnit(s string) (TimeUnits, bool) {
+func parseTimeUnit(s string) (TimeEntryUnit, bool) {
 	unit, found := timeUnitMap[strings.ToLower(strings.TrimSpace(s))]
 	return unit, found
 }
 
-type TimeUnit struct {
-	Type RecordValueType
-	Unit TimeUnits
+type TimeMeasure struct {
+	Value MeasureValue
+	Type MeasureUnitType
+	Unit TimeEntryUnit
 }
 
-func NewTimeUnit(input string) (RecordUnit, error) {
+func NewTimeUnit(input string) (Measure, error) {
 	unit, found := parseTimeUnit(input)
 
 	if !found {
 		return nil, fmt.Errorf("Unknown unit %s", input)
 	}
 
-	return &TimeUnit{
+	return &TimeMeasure{
 		Type: TimeUnitType,
 		Unit: unit,
 	}, nil
 }
 
-func (t *TimeUnit) getUnit() RecordValueUnit {
-	return RecordValueUnit(t.Unit)
+func (t *TimeMeasure) getUnit() MeasureUnit {
+	return MeasureUnit(t.Unit)
 }
 
-func (t *TimeUnit) getType() RecordValueType {
+func (t *TimeMeasure) getType() MeasureUnitType {
 	return t.Type
 }
 
-func (t *TimeUnit) ConvertToBaseUnit(value RecordValue) RecordValue {
-	return value * RecordValue(t.Unit)
+func (t *TimeMeasure) ConvertToBaseUnit(value MeasureValue) MeasureValue {
+	return value * MeasureValue(t.Unit)
 }
 
-func (t *TimeUnit) ConvertToUnit(value RecordValue, unit RecordValueUnit) RecordValue {
-	return t.ConvertToBaseUnit(value) / RecordValue(unit)
+func (t *TimeMeasure) ConvertToUnit(value MeasureValue, unit MeasureUnit) MeasureValue {
+	return t.ConvertToBaseUnit(value) / MeasureValue(unit)
 }
 
-func newRecordUnit(unit string) (RecordUnit, error) {
+func newRecordUnit(unit string) (Measure, error) {
 	if unit == "" {
 		return nil, nil
 	}
 
-	new_functions := []func(input string) (RecordUnit, error){
+	new_functions := []func(input string) (Measure, error){
 		NewTimeUnit,
 	}
 
@@ -160,13 +161,13 @@ func newRecordUnit(unit string) (RecordUnit, error) {
 
 type Record struct {
 	Label     string
-	BaseValue RecordValue
-	Unit      RecordUnit
+	BaseValue MeasureValue
+	Unit      Measure
 }
 
 // splitInputString splits an input string into a label, value, and unit
 // The input string should be in the format "label: value unit"
-func splitInputString(input string) (label string, value RecordValue, unit_str string, err error) {
+func splitInputString(input string) (label string, value MeasureValue, unit_str string, err error) {
 	label, value_with_unit, found := strings.Cut(strings.TrimSpace(input), ":")
 
 	if !found {
@@ -185,13 +186,13 @@ func splitInputString(input string) (label string, value RecordValue, unit_str s
 		return "", 0, "", err
 	}
 
-	return label, RecordValue(value_f64), unit_str, nil
+	return label, MeasureValue(value_f64), unit_str, nil
 }
 
 // NewRecord creates a new Record with the given label, value, and unit string
-func NewRecord(label string, value RecordValue, unit_str string) (*Record, error) {
+func NewRecord(label string, value MeasureValue, unit_str string) (*Record, error) {
 	if value <= 0 {
-		return nil, fmt.Errorf("value must be greater than 0")
+		return nil, fmt.Errorf("failed to create record: value must be greater than 0")
 	}
 	unit, err := newRecordUnit(unit_str)
 	if err != nil {
@@ -220,14 +221,14 @@ func NewRecordFromString(input string) (*Record, error) {
 	return record, nil
 }
 
-func (r *Record) Scale(ref *Record, unit RecordValueUnit) RecordValue {
-	return r.BaseValue / ref.BaseValue * RecordValue(unit)
+func (r *Record) Scale(ref *Record, unit MeasureUnit) {
+	r.BaseValue = (r.BaseValue / ref.BaseValue) * MeasureValue(unit)
 }
 
 type RecordEnlistment struct {
 	Records   []*Record
 	RefRecord *Record
-	ScaleUnit RecordUnit
+	ScaleUnit Measure
 	Sorted    bool
 	Reversed  bool
 }
@@ -289,7 +290,7 @@ func (enlistment *RecordEnlistment) findRefRecord() *Record {
 	for _, record := range enlistment.Records[1:] {
 		compared := compareFunc(float64(refRecord.BaseValue), float64(record.BaseValue))
 
-		if refRecord.BaseValue != RecordValue(compared) {
+		if refRecord.BaseValue != MeasureValue(compared) {
 			refRecord = record
 		}
 	}
@@ -314,12 +315,12 @@ func (re *RecordEnlistment) SortRecords() {
 
 func (re *RecordEnlistment) ScaleRecords() {
 	for _, record := range re.Records {
-		record.BaseValue = record.Scale(re.RefRecord, re.ScaleUnit.getUnit())
+		record.Scale(re.RefRecord, re.ScaleUnit.getUnit())
 	}
 }
 
-var CommentPrefix = "#"
-var SettingPrefix = "@"
+const CommentPrefix = "#"
+const SettingPrefix = "@"
 
 func ScanReaderIntoEnlistment(reader io.Reader) (RecordEnlistment, error) {
 	enlistment := NewRecordEnlistmentDefault()

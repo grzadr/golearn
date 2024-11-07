@@ -2,6 +2,7 @@ package parsing
 
 import (
 	"errors"
+	// "fmt"
 	"os"
 	"strings"
 	"testing"
@@ -38,7 +39,7 @@ func TestNewTimeUnitValid(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if TimeUnits(unit.getUnit()) != Second {
+	if TimeEntryUnit(unit.getUnit()) != Second {
 		t.Errorf("Expected unit to be %d, got %d", Second, unit.getUnit())
 	}
 }
@@ -56,18 +57,18 @@ func TestNewTimeUnitInvalid(t *testing.T) {
 }
 
 func TestTimeUnitgetUnit(t *testing.T) {
-	unit := TimeUnit{Unit: Second}
+	unit := TimeMeasure{Unit: Second}
 
-	if unit.getUnit() != RecordValueUnit(Second) {
+	if unit.getUnit() != MeasureUnit(Second) {
 		t.Errorf("Expected unit to be %d, got %d", Second, unit.getUnit())
 	}
 }
 
 func TestTimeUnitgetType(t *testing.T) {
-	unit := TimeUnit{Unit: Second}
+	unit := TimeMeasure{Unit: Second}
 
-	if unit.getType() != UnknownUnitType {
-		t.Errorf("Expected type to be %d, got %d", UnknownUnitType, unit.getType())
+	if unit.getType() != UnknownUnit {
+		t.Errorf("Expected type to be %d, got %d", UnknownUnit, unit.getType())
 	}
 
 	unit.Type = TimeUnitType
@@ -78,9 +79,9 @@ func TestTimeUnitgetType(t *testing.T) {
 }
 
 func TestTimeUnitConvertToUnit(t *testing.T) {
-	unit := TimeUnit{Unit: Minute}
-	result := unit.ConvertToUnit(1.0, RecordValueUnit(Second))
-	expected := RecordValue(60.0)
+	unit := TimeMeasure{Unit: Minute}
+	result := unit.ConvertToUnit(1.0, MeasureUnit(Second))
+	expected := MeasureValue(60.0)
 
 	if result != expected {
 		t.Errorf("Expected value to be %f, got %f", expected, result)
@@ -88,7 +89,7 @@ func TestTimeUnitConvertToUnit(t *testing.T) {
 }
 
 func TestTimeUnitConvertToBaseUnit(t *testing.T) {
-	unit := TimeUnit{Unit: Minute}
+	unit := TimeMeasure{Unit: Minute}
 
 	if unit.ConvertToBaseUnit(1.0) != 60.0 {
 		t.Errorf("Expected value to be 60.0, got %f", unit.ConvertToBaseUnit(1.0))
@@ -102,8 +103,8 @@ func TestNewRecordUnitValid(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if TimeUnits(unit.(*TimeUnit).getUnit()) != Second {
-		t.Errorf("Expected unit to be %d, got %d", Second, unit.(*TimeUnit).getUnit())
+	if TimeEntryUnit(unit.(*TimeMeasure).getUnit()) != Second {
+		t.Errorf("Expected unit to be %d, got %d", Second, unit.(*TimeMeasure).getUnit())
 	}
 }
 
@@ -193,7 +194,7 @@ func TestLoaderSplitInputStringInvalidValue(t *testing.T) {
 
 func TestNewRecord(t *testing.T) {
 	label := "Label 1"
-	value := 3.14
+	value := MeasureValue(3.14)
 	unit_str := "years"
 	record, err := NewRecord(label, value, unit_str)
 
@@ -205,12 +206,12 @@ func TestNewRecord(t *testing.T) {
 		t.Errorf("Expected label to be '%s', got '%s'", label, record.Label)
 	}
 
-	if record.Unit.getUnit() != int64(Year) {
-		t.Errorf("Expected unit to be %d, got %d", Year, record.Unit.(*TimeUnit).getUnit())
+	if record.Unit.getUnit() != MeasureUnit(Year) {
+		t.Errorf("Expected unit to be %d, got %d", Year, record.Unit.(*TimeMeasure).getUnit())
 	}
 
-	if record.BaseValue != 3.14*float64(Year) {
-		t.Errorf("Expected base value to be %f, got %f", 3.14*float64(Year), record.BaseValue)
+	if record.BaseValue != value*MeasureValue(Year) {
+		t.Errorf("Expected base value to be %f, got %f", 3.14*MeasureValue(Year), record.BaseValue)
 	}
 }
 
@@ -226,6 +227,18 @@ func TestNewRecordInvalidUnit(t *testing.T) {
 	}
 }
 
+func TestNewRecordNegative(t *testing.T) {
+	_, err := NewRecord("Label 1", 0, "invalid")
+
+	if err == nil {
+		t.Error("Expected an error for 0 value, but got nil")
+	}
+
+	if err.Error() != "failed to create record: value must be greater than 0" {
+		t.Errorf("Expected error message 'value must be greater than 0', got '%s'", err.Error())
+	}
+}
+
 func TestNewRecordFromString(t *testing.T) {
 	input := "Label 1: 3.14 years"
 	record, err := NewRecordFromString(input)
@@ -238,8 +251,8 @@ func TestNewRecordFromString(t *testing.T) {
 		t.Errorf("Expected label to be '%s', got '%s'", "Label 1", record.Label)
 	}
 
-	if record.Unit.(*TimeUnit).getUnit() != int64(Year) {
-		t.Errorf("Expected unit to be %d, got %d", Year, record.Unit.(*TimeUnit).getUnit())
+	if record.Unit.(*TimeMeasure).getUnit() != MeasureUnit(Year) {
+		t.Errorf("Expected unit to be %d, got %d", Year, record.Unit.(*TimeMeasure).getUnit())
 	}
 }
 
@@ -269,6 +282,19 @@ func TestNewRecordFromStringInvalidValue(t *testing.T) {
 	}
 }
 
+func TestRecordScale(t *testing.T) {
+	ref, _ := NewRecord("ref", 10, "second")
+	record, _ := NewRecord("test", 1, "second")
+	scale_unit := Minute
+	expected := MeasureValue(6)
+
+	record.Scale(ref, MeasureUnit(scale_unit))
+
+	if record.BaseValue != expected {
+		t.Errorf("Expected value to be %f not %f", expected, record.BaseValue)
+	}
+}
+
 func TestNewRecordSliceFromReader(t *testing.T) {
 	input := `Label 2: 42 days
 Label 3: 3.14 years
@@ -288,17 +314,17 @@ Label 1: 1.5 hours`
 	}
 
 	// Check the first record
-	if records[2].Label != "Label 1" || records[2].Unit.getUnit() != int64(Hour) {
+	if records[2].Label != "Label 1" || records[2].Unit.getUnit() != MeasureUnit(Hour) {
 		t.Errorf("First record '%s' doesn't match expected values", records[2].Label)
 	}
 
 	// Check the second record
-	if records[1].Label != "Label 2" || records[1].Unit.getUnit() != int64(Day) {
+	if records[1].Label != "Label 2" || records[1].Unit.getUnit() != MeasureUnit(Day) {
 		t.Errorf("Second record doesn't match expected values")
 	}
 
 	// Check the third record
-	if records[0].Label != "Label 3" || records[0].Unit.getUnit() != int64(Year) {
+	if records[0].Label != "Label 3" || records[0].Unit.getUnit() != MeasureUnit(Year) {
 		t.Errorf("Third record doesn't match expected values")
 	}
 }
@@ -358,7 +384,7 @@ Label 3: 1.5 hours
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if enlistment.ScaleUnit.getUnit() != int64(Day) {
+	if enlistment.ScaleUnit.getUnit() != MeasureUnit(Day) {
 		t.Errorf("Expected scale unit to be %d, got %d", Day, enlistment.ScaleUnit.getUnit())
 	}
 
@@ -373,7 +399,7 @@ Label 3: 1.5 hours
 	}
 
 	// Check the first record
-	if records[0].Label != "Label 1" || records[0].Unit.getUnit() != int64(Year) {
+	if records[0].Label != "Label 1" || records[0].Unit.getUnit() != MeasureUnit(Year) {
 		t.Errorf("First record doesn't match expected values")
 	}
 }
@@ -428,7 +454,7 @@ Label 2: 42 days
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if enlistment.ScaleUnit.getUnit() != int64(Day) {
+	if enlistment.ScaleUnit.getUnit() != MeasureUnit(Day) {
 		t.Errorf("Expected scale unit to be %d, got %d", Day, enlistment.ScaleUnit.getUnit())
 	}
 
@@ -439,7 +465,7 @@ Label 2: 42 days
 	}
 
 	// Check the first record
-	if records[0].Label != "Label 3" || records[0].Unit.getUnit() != int64(Year) {
+	if records[0].Label != "Label 3" || records[0].Unit.getUnit() != MeasureUnit(Year) {
 		t.Errorf("First record doesn't match expected values")
 	}
 }
@@ -481,7 +507,7 @@ func TestRecordEnlistmentSettingsMapperScale(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if enlistment.ScaleUnit.getUnit() != int64(Day) {
+	if enlistment.ScaleUnit.getUnit() != MeasureUnit(Day) {
 		t.Errorf("Expected scale unit to be %d, got %d", Day, enlistment.ScaleUnit.getUnit())
 	}
 }
