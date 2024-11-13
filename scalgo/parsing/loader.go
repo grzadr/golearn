@@ -12,18 +12,6 @@ import (
 	"strings"
 )
 
-type MeasureUnit uint64
-type MeasureValue float64
-
-type MeasureUnitType uint
-
-type Measure interface {
-	ConvertToUnit(value MeasureValue, unit MeasureUnit) MeasureValue
-	ConvertToBaseUnit(value MeasureValue) MeasureValue
-	getUnit() MeasureUnit
-	getType() MeasureUnitType
-}
-
 const (
 	UnknownUnitType MeasureUnitType = iota
 	TimeUnitType
