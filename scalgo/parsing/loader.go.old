@@ -95,8 +95,8 @@ func parseTimeUnit(s string) (TimeEntryUnit, bool) {
 
 type TimeMeasure struct {
 	Value MeasureValue
-	Type MeasureUnitType
-	Unit TimeEntryUnit
+	Type  MeasureUnitType
+	Unit  TimeEntryUnit
 }
 
 func NewTimeUnit(input string) (Measure, error) {

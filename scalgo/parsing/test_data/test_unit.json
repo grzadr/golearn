@@ -1,0 +1,16 @@
+{
+    "meter": {
+        "value": 1.0,
+        "aliases": [
+            "m",
+            "meters"
+        ]
+    },
+    "kilometer": {
+        "value": 1000.0,
+        "aliases": [
+            "km",
+            "kilometers"
+        ]
+    }
+}
