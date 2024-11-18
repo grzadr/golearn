@@ -1,0 +1,18 @@
+{
+    "second": {
+        "value": 1,
+        "aliases": [
+            "seconds",
+            "sec",
+            "s"
+        ]
+    },
+    "minute": {
+        "value": 60,
+        "aliases": [
+            "minutes",
+            "min",
+            "m"
+        ]
+    }
+}

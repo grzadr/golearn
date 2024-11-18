@@ -98,7 +98,7 @@ func TestLoadUnitEntriesFromFS_InvalidPath(t *testing.T) {
 }
 
 func TestLoadUnitEntriesFromUnitsPath(t *testing.T) {
-	units := loadUnitEntriesFromUnitsPath("units/time.json")
+	units := loadUnitEntriesFromDefaults("units/time.json")
 
 	// Verify that units were loaded correctly
 	if len(units) != 10 {
@@ -119,5 +119,7 @@ func TestLoadUnitEntriesFromUnitsPath_InvalidPath(t *testing.T) {
 		}
 	}()
 
-	loadUnitEntriesFromUnitsPath("nonexistent/path.json")
+	loadUnitEntriesFromDefaults("nonexistent/path.json")
 }
+
+func loadUnitEntriesFilesFromDirectory

@@ -12,13 +12,17 @@ import (
 //go:embed units/*.json
 var unitsFS embed.FS
 
-// Unit represents a single unit with its value and aliases
+var units_path = "units"
+
+// Unit represents a single unit entry with its value and aliases
 type UnitEntry struct {
 	Value   float64  `json:"value"`
 	Aliases []string `json:"aliases"`
 }
 
 type UnitEntries map[string]UnitEntry
+
+type UnitEntriesFiles map[string]UnitEntries
 
 func loadUnitEntriesFromJson(json_data []byte) UnitEntries {
 	units := make(UnitEntries)
@@ -38,10 +42,33 @@ func loadUnitEntriesFromFS(fsys fs.FS, entries_path string) UnitEntries {
 	return loadUnitEntriesFromJson(data)
 }
 
-// Original function now uses the FS-based implementation
-func loadUnitEntriesFromUnitsPath(entries_path string) UnitEntries {
-	return loadUnitEntriesFromFS(unitsFS, entries_path)
+
+func loadUnitEntriesFilesFromDirectory(fsys fs.FS, dir_path string) UnitEntriesFiles{
+	entries = make(UnitEntriesFiles)
+
+	return entries
 }
+
+
+
+type Unit struct {
+    unit float64
+}
+
+type Units map[string]Unit
+type UnitAliases map[string]*Unit
+
+type UnitsRecord struct {
+    units Units
+    aliases UnitAliases
+}
+
+type UnitsRegistry map[string]UnitsRecord
+
+var registry *UnitsRegistry
+
+func
+
 
 // type Units map[string]UnitEntries
 
