@@ -179,34 +179,24 @@ func TestLoadUnitEntriesFilesFromDirectory(t *testing.T) {
 func TestLoadUnitEntriesFilesFromEmbedded(t *testing.T) {
 	entries_files := loadUnitEntriesFilesFromEmbedded()
 
-	expected_files := 2
-
-	if num_files := len(entries_files); num_files != expected_files {
-		t.Errorf("Expected %d UnitEntriesFiles, loaded %d", expected_files, num_files)
+	expected_content := map[string]int{
+		"time":   10,
+		"length": 21,
 	}
 
-	time_unit_entry, found := entries_files["time"]
-
-	if !found {
-		t.Error("Expected to find `time`")
+	if num_files := len(entries_files); num_files != len(expected_content) {
+		t.Errorf("Expected %d UnitEntriesFiles, loaded %d", len(expected_content), num_files)
 	}
 
-	expected_time_entries := 10
+	for filename, expected := range expected_content {
+		entry, found := entries_files[filename]
 
-	if time_entries_n := len(time_unit_entry); time_entries_n != expected_time_entries {
-		t.Errorf("Expected %d UnitEntriesFiles, loaded %d", expected_time_entries, time_entries_n)
+		if !found {
+			t.Errorf("Expected to find `%s`", filename)
+		}
+
+		if entries_n := len(entry); entries_n != expected {
+			t.Errorf("Expected %d UnitEntriesFiles, loaded %d", expected, entries_n)
+		}
 	}
-
-	length_unit_entry, found := entries_files["length"]
-
-	if !found {
-		t.Error("Expected to find `length`")
-	}
-
-	expected_length_entries := 21
-
-	if length_entries_n := len(length_unit_entry); length_entries_n != expected_length_entries {
-		t.Errorf("Expected %d UnitEntriesFiles, loaded %d", length_entries_n, expected_length_entries)
-	}
-
 }
