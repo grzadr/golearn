@@ -188,3 +188,43 @@ func compareWalkEntries(got, want WalkEntry) bool {
 		got.IsDir == want.IsDir &&
 		got.IsRegular == want.IsRegular
 }
+
+func TestWalkFS_EarlyTermination(t *testing.T) {
+	// Create a filesystem with multiple files
+	fsys := fstest.MapFS{
+		"dir1/file1.txt":      &fstest.MapFile{Data: []byte("content")},
+		"dir1/dir2/file2.txt": &fstest.MapFile{Data: []byte("content")},
+		"dir1/dir2/file3.txt": &fstest.MapFile{Data: []byte("content")},
+	}
+
+	// Count how many entries we process before stopping
+	processedEntries := 0
+
+	// Track if we found our target file
+	foundTarget := false
+
+	// Walk the filesystem but stop after finding "file2.txt"
+	for entry, err := range walkFS(fsys, ".") {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		processedEntries++
+
+		if entry.Name == "file2" && entry.Ext == ".txt" {
+			foundTarget = true
+			break // This will cause yield to return false on next iteration
+		}
+	}
+
+	// Verify we found our target
+	if !foundTarget {
+		t.Error("did not find target file before termination")
+	}
+
+	// Verify we didn't process all entries
+	// The full tree has 5 entries (dir1, dir1/dir2, and 3 files)
+	if processedEntries >= 5 {
+		t.Error("early termination failed: processed all entries")
+	}
+}

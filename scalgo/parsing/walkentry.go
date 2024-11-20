@@ -63,9 +63,17 @@ func walkFS(fsys fs.FS, root string) iter.Seq2[WalkEntry, error] {
 				subIter := walkFS(fsys, subPath)
 
 				// Create wrapper to handle the subdirectory iteration
+				shouldContinue := true
 				subIter(func(subEntry WalkEntry, err error) bool {
-					return yield(subEntry, err)
+					// Propagate the yield result up through all recursive calls
+					shouldContinue = yield(subEntry, err)
+					return shouldContinue
 				})
+
+				// If the sub-iteration was stopped, stop the main iteration too
+				if !shouldContinue {
+					return
+				}
 			}
 		}
 	}
