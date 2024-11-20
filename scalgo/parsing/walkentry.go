@@ -38,6 +38,19 @@ func newWalkEntry(entry fs.DirEntry, root string) WalkEntry {
 	}
 }
 
+// walkSubdirectory handles recursive directory traversal and propagates termination signal
+func walkSubdirectory(fsys fs.FS, subPath string, yield func(WalkEntry, error) bool) bool {
+	subIter := walkFS(fsys, subPath)
+
+	shouldContinue := true
+	subIter(func(subEntry WalkEntry, err error) bool {
+		shouldContinue = yield(subEntry, err)
+		return shouldContinue
+	})
+
+	return shouldContinue
+}
+
 func walkFS(fsys fs.FS, root string) iter.Seq2[WalkEntry, error] {
 	return func(yield func(WalkEntry, error) bool) {
 		// Read directory entries
@@ -60,18 +73,7 @@ func walkFS(fsys fs.FS, root string) iter.Seq2[WalkEntry, error] {
 			// If it's a directory, recursively walk it
 			if entry.IsDir() {
 				subPath := path.Join(root, entry.Name())
-				subIter := walkFS(fsys, subPath)
-
-				// Create wrapper to handle the subdirectory iteration
-				shouldContinue := true
-				subIter(func(subEntry WalkEntry, err error) bool {
-					// Propagate the yield result up through all recursive calls
-					shouldContinue = yield(subEntry, err)
-					return shouldContinue
-				})
-
-				// If the sub-iteration was stopped, stop the main iteration too
-				if !shouldContinue {
+				if !walkSubdirectory(fsys, subPath, yield) {
 					return
 				}
 			}
