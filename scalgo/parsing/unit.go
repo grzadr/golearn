@@ -5,10 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"strings"
-	"path"
-	"iter"
-	// "strings"
 )
 
 //go:embed units/*.json
@@ -26,100 +22,49 @@ type UnitEntries map[string]UnitEntry
 
 type UnitEntriesFiles map[string]UnitEntries
 
-func loadUnitEntriesFromJson(json_data []byte) UnitEntries {
+func loadUnitEntriesFromJson(json_data []byte) (UnitEntries, error) {
 	units := make(UnitEntries)
 	if err := json.Unmarshal(json_data, &units); err != nil {
-		panic(fmt.Sprintf("failed to unmarshal json data: %v", err))
+		return nil, fmt.Errorf("failed to unmarshal json data: %w", err)
 	}
 
-	return units
+	return units, nil
 }
 
-func loadUnitEntriesFromFS(fsys fs.FS, entries_path string) UnitEntries {
+func loadUnitEntriesFromFS(fsys fs.FS, entries_path string) (UnitEntries, error) {
 	data, err := fs.ReadFile(fsys, entries_path)
 	if err != nil {
-		panic(fmt.Sprintf("failed to read %s: %v", entries_path, err))
+		return nil, fmt.Errorf("failed to read %s: %w", entries_path, err)
 	}
 
 	return loadUnitEntriesFromJson(data)
 }
 
-// walkFS returns an iterator that yields filesystem entries and potential errors
-func walkFS(fsys fs.FS, root string) iter.Seq2[fs.DirEntry, error] {
-    return func(yield func(fs.DirEntry, error) bool) {
-        // Read directory entries using fs.ReadDir
-        entries, err := fs.ReadDir(fsys, root)
-        if err != nil {
-            yield(nil, err)
-            return
-        }
-
-        // Iterate over entries
-        for _, entry := range entries {
-            // Yield the current entry
-            if !yield(entry, nil) {
-                return
-            }
-
-            // If it's a directory, recursively walk it
-            if entry.IsDir() {
-                subPath := path.Join(root, entry.Name())
-                subIter := walkFS(fsys, subPath)
-
-                // Create a new iterator for the subdirectory
-                subIter(func(subEntry fs.DirEntry, err error) bool {
-                    return yield(subEntry, err)
-                })
-            }
-        }
-    }
-}
-
-func readDirEntries(fsys fs.FS, dir_path string) []fs.DirEntry {
-	fs.w
-	entries, err := fs.ReadDir(fsys, dir_path)
-	if err != nil {
-		panic(fmt.Sprintf("failed to read units directory: %v", err))
-	}
-
-	return entries
-}
-
-func extractFileName(entry fs.DirEntry) string {
-	return strings.TrimSuffix(entry.Name(), ".json")
-}
-
-func isJSONFile(entry fs.DirEntry) bool{
-	return entry.Type().IsRegular() && path.Ext(entry.Name()) != ".json"
-}
-
 func loadUnitEntriesFilesFromDirectory(fsys fs.FS, dir_path string) (UnitEntriesFiles, error) {
 	entries := make(UnitEntriesFiles)
 
-	for _, dir_entry := range readDirEntries(fsys, dir_path) {
-		if !isJSONFile(dir_entry) {
-			continue
-		}
-
-		filename := extractFileName(dir_entry)
-
-		file_info, err := dir_entry.Info()
-
+	for walk_entry, err := range walkFS(fsys, dir_path) {
 		if err != nil {
 			return make(UnitEntriesFiles), err
 		}
 
-		file_info.
+		if !walk_entry.isJSONFile() {
+			continue
+		}
 
-		entries[filename] = loadUnitEntriesFromFS(fsys, )
+		unit_entry, err := loadUnitEntriesFromFS(fsys, walk_entry.Path)
 
+		if err != nil {
+			return nil, err
+		}
 
+		entries[walk_entry.Name] = unit_entry
 	}
 
 	return entries, nil
 }
 
-func loadUnitEntriesFilesFromEmbedded() UnitEntriesFiles {
+func loadUnitEntriesFilesFromEmbedded() (UnitEntriesFiles, error) {
 	return loadUnitEntriesFilesFromDirectory(unitsFS, UNITS_PATH)
 }
 

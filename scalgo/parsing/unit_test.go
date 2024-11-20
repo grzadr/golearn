@@ -74,7 +74,15 @@ func validateEmptyUnitEntry(units UnitEntries) error {
 }
 
 func TestLoadUnitEntriesFromJson(t *testing.T) {
-	units := loadUnitEntriesFromJson(testJsonData)
+	units, err := loadUnitEntriesFromJson(testJsonData)
+
+	if err != nil {
+		t.Errorf("Expected error %v", err)
+	}
+
+	if units == nil {
+		t.Error("Units is nil")
+	}
 
 	if err := validateUnitEntry(units); err != nil {
 		t.Error(err)
@@ -82,18 +90,28 @@ func TestLoadUnitEntriesFromJson(t *testing.T) {
 }
 
 func TestLoadUnitEntriesFromJson_InvalidJSON(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("Expected panic with invalid JSON, but function did not panic")
-		}
-	}()
-
 	invalidJson := []byte(`{invalid json}`)
-	loadUnitEntriesFromJson(invalidJson)
+	entries, err := loadUnitEntriesFromJson(invalidJson)
+
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+
+	if entries != nil {
+		t.Errorf("Expected entries to be nil, got %v", entries)
+	}
 }
 
 func TestLoadUnitEntriesFromFS(t *testing.T) {
-	units := loadUnitEntriesFromFS(testFS, "units/test_unit.json")
+	units, err := loadUnitEntriesFromFS(testFS, "units/test_unit.json")
+
+	if err != nil {
+		t.Errorf("Expected error %v", err)
+	}
+
+	if units == nil {
+		t.Error("Units is nil")
+	}
 
 	// Verify that units were loaded correctly
 	if len(units) != 2 {
@@ -108,17 +126,27 @@ func TestLoadUnitEntriesFromFS(t *testing.T) {
 }
 
 func TestLoadUnitEntriesFromFS_InvalidPath(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("Expected panic with invalid path, but function did not panic")
-		}
-	}()
+	entries, err := loadUnitEntriesFromFS(testFS, "nonexistent/path.json")
 
-	loadUnitEntriesFromFS(testFS, "nonexistent/path.json")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+
+	if entries != nil {
+		t.Errorf("Expected entries to be nil, got %v", entries)
+	}
 }
 
 func TestLoadUnitEntriesFromUnitsPath(t *testing.T) {
-	units := loadUnitEntriesFromFS(unitsFS, "units/time.json")
+	units, err := loadUnitEntriesFromFS(unitsFS, "units/time.json")
+
+	if err != nil {
+		t.Errorf("Expected error %v", err)
+	}
+
+	if units == nil {
+		t.Error("Units is nil")
+	}
 
 	// Verify that units were loaded correctly
 	if len(units) != 10 {
@@ -137,17 +165,23 @@ func TestLoadUnitEntriesFromUnitsPath(t *testing.T) {
 }
 
 func TestLoadUnitEntriesFromUnitsPath_InvalidPath(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("Expected panic with invalid path, but function did not panic")
-		}
-	}()
+	entries, err := loadUnitEntriesFromFS(unitsFS, "nonexistent/path.json")
 
-	loadUnitEntriesFromFS(unitsFS, "nonexistent/path.json")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+
+	if entries != nil {
+		t.Errorf("Expected entries to be nil, got %v", entries)
+	}
 }
 
 func TestLoadUnitEntriesFilesFromDirectory(t *testing.T) {
-	entries_files := loadUnitEntriesFilesFromDirectory(testFS, testFSDirPath)
+	entries_files, err := loadUnitEntriesFilesFromDirectory(testFS, testFSDirPath)
+
+	if err != nil {
+		t.Errorf("Function returned unexpected error: %v", err)
+	}
 
 	expected_files := 2
 
@@ -177,7 +211,11 @@ func TestLoadUnitEntriesFilesFromDirectory(t *testing.T) {
 }
 
 func TestLoadUnitEntriesFilesFromEmbedded(t *testing.T) {
-	entries_files := loadUnitEntriesFilesFromEmbedded()
+	entries_files, err := loadUnitEntriesFilesFromEmbedded()
+
+	if err != nil {
+		t.Errorf("Function returned unexpected error: %v", err)
+	}
 
 	expected_content := map[string]int{
 		"time":   10,
