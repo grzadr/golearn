@@ -12,13 +12,13 @@ var unitsFS embed.FS
 
 const UNITS_PATH = "units"
 
-// Unit represents a single unit entry with its value and aliases
-type UnitEntry struct {
-	Value   float64  `json:"value"`
-	Aliases []string `json:"aliases"`
-}
+// // Unit represents a single unit entry with its value and aliases
+// type UnitEntry struct {
+// 	Value   float64  `json:"value"`
+// 	Aliases []string `json:"aliases"`
+// }
 
-type UnitEntries map[string]UnitEntry
+// type UnitEntries map[string]UnitEntry
 
 type UnitEntriesFiles map[string]UnitEntries
 
@@ -68,9 +68,12 @@ func loadUnitEntriesFilesFromEmbedded() (UnitEntriesFiles, error) {
 	return loadUnitEntriesFilesFromDirectory(unitsFS, UNITS_PATH)
 }
 
-// type Unit struct {
-// 	unit float64
-// }
+type Unit struct {
+	Name string
+	unit float64
+}
+
+type UnitAliases []string
 
 // type Units map[string]Unit
 // type UnitAliases map[string]*Unit
