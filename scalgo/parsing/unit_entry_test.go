@@ -1,6 +1,8 @@
 package parsing
 
 import (
+	"bytes"
+	"encoding/json"
 	"testing"
 )
 
@@ -76,9 +78,8 @@ func TestIterUnitEntries_InvalidJSON(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:  "invalid opening delimiter",
-			input: []byte(`["not an object"]`),
-			// Exact match for the error message
+			name:    "invalid opening delimiter",
+			input:   []byte(`["not an object"]`),
 			wantErr: "expected {, got [",
 		},
 		{
@@ -87,8 +88,9 @@ func TestIterUnitEntries_InvalidJSON(t *testing.T) {
 			wantErr: "reading key: invalid character 'i'",
 		},
 		{
-			name:    "non-string key",
-			input:   []byte(`{123: {}}`),
+			name: "non-string key",
+			// This will trigger the type assertion failure
+			input:   []byte(`{1: {"value": 1.0, "aliases": ["m"]}}`),
 			wantErr: "reading key: invalid character '1'",
 		},
 		{
@@ -108,16 +110,42 @@ func TestIterUnitEntries_InvalidJSON(t *testing.T) {
 			var gotErr error
 			for _, next := range IterUnitEntries(tc.input) {
 				gotErr = next.Err
-				break // We only need to check the first error
+				break
 			}
 
 			if gotErr == nil {
 				t.Fatal("expected error, got nil")
 			}
-			if gotErr.Error() != tc.wantErr { // Changed to exact match
+			if gotErr.Error() != tc.wantErr {
 				t.Errorf("expected error %q, got %q", tc.wantErr, gotErr.Error())
 			}
 		})
+	}
+}
+
+// Add this as a separate test function
+func TestParseNextEntry_NonStringKey(t *testing.T) {
+	input := []byte(`{"1": {"value": 1.0, "aliases": ["m"]}}`)
+	decoder := json.NewDecoder(bytes.NewReader(input))
+
+	// Skip the opening brace
+	decoder.Token()
+
+	// Read the next token but replace it with a number
+	decoder.Token()
+	entry, err := parseNextEntry(decoder)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	expectedErr := "expected string key, got json.Delim"
+	if err.Error() != expectedErr {
+		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
+	}
+
+	if entry.validate() == nil {
+		t.Errorf("expected zero UnitEntry, got %+v", entry)
 	}
 }
 
@@ -225,7 +253,7 @@ func TestUnitEntry_Validate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.entry.Validate()
+			err := tc.entry.validate()
 			if tc.wantErr == "" {
 				if err != nil {
 					t.Errorf("expected no error, got %v", err)
@@ -242,7 +270,6 @@ func TestUnitEntry_Validate(t *testing.T) {
 	}
 }
 
-
 // Benchmark to ensure performance
 func BenchmarkIterUnitEntries(b *testing.B) {
 	for i := 0; i < b.N; i++ {
@@ -253,84 +280,3 @@ func BenchmarkIterUnitEntries(b *testing.B) {
 		}
 	}
 }
-
-// package parsing
-
-// import (
-// 	"testing"
-// )
-
-// var testUnitEntryJsonData = []byte(`{
-//     "meter": {
-//         "value": 1.0,
-//         "aliases": ["m", "meters"]
-//     },
-//     "kilometer": {
-//         "value": 1000.0,
-//         "aliases": ["km", "kilometers"]
-//     }
-// }`)
-
-// var testExpectedData = []UnitEntry{
-// 	UnitEntry{
-// 		Name:    "meter",
-// 		Value:   1.0,
-// 		Aliases: []string{"m", "meters"},
-// 	},
-// 	UnitEntry{
-// 		Name:    "kilometer",
-// 		Value:   1000.0,
-// 		Aliases: []string{"km", "kilometers"},
-// 	},
-// }
-
-// func helpCompareUnitEntry(a *UnitEntry, b *UnitEntry) bool {
-// 	if a.Name != b.Name || a.Value != b.Value || len(a.Aliases) != len(b.Aliases) {
-// 		return false
-// 	}
-
-// 	a_aliases := a.Aliases
-// 	b_aliases := b.Aliases
-
-// 	for i := 0; i < len(a_aliases); i++ {
-// 		if a_aliases[i] != b_aliases[i] {
-// 			return false
-// 		}
-// 	}
-
-// 	return true
-// }
-
-// func TestIterUnitEntry(t *testing.T) {
-// 	for i, next := range IterUnitEntries(testUnitEntryJsonData) {
-// 		if next.Err != nil {
-// 			t.Errorf("Received unexpected error %v", next.Err)
-// 		}
-
-// 		if !helpCompareUnitEntry(&next.Entry, &testExpectedData[i]) {
-// 			t.Errorf("Expected entry %v, got %v", next.Entry, testExpectedData[i])
-// 			return
-// 		}
-// 	}
-// }
-
-// func TestIterUnitEntry_EarlyTermination(t *testing.T) {
-// 	last_i := 0
-// 	for i, next := range IterUnitEntries(testUnitEntryJsonData) {
-// 		last_i = i
-// 		if next.Err != nil {
-// 			t.Errorf("Received unexpected error %v", next.Err)
-// 		}
-
-// 		if !helpCompareUnitEntry(&next.Entry, &testExpectedData[i]) {
-// 			t.Errorf("Expected entry %v, got %v", next.Entry, testExpectedData[i])
-// 			return
-// 		}
-
-// 		break
-// 	}
-
-// 	if last_i > 0 {
-// 		t.Errorf("Expected to terminate at 0, but terminated at %d", last_i)
-// 	}
-// }

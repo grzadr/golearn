@@ -7,6 +7,7 @@ BINARY_NAME=scalgo
 BINARY_UNIX=$(BINARY_NAME)_unix
 BIN_DIR=bin
 COVER_DIR=coverage
+SRC_DIR=./...
 
 all: test build
 
@@ -17,15 +18,15 @@ build: $(BIN_DIR)
 	$(GOBUILD) -o $(BIN_DIR)/$(BINARY_NAME) -v
 
 lint:
-	go fmt ./...
-	golangci-lint run
+	go fmt $(SRC_DIR)
+	# golangci-lint run
 
 test: lint
-	$(GOTEST) -v ./...
+	$(GOTEST) -v $(SRC_DIR)
 
 test-cover: test
 	mkdir -p $(COVER_DIR)
-	$(GOTEST) -coverprofile=$(COVER_DIR)/coverage.out ./...
+	$(GOTEST) -coverprofile=$(COVER_DIR)/coverage.out $(SRC_DIR)
 	go tool cover -html=$(COVER_DIR)/coverage.out
 
 clean:

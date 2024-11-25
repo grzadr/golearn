@@ -15,7 +15,7 @@ type UnitEntry struct {
 	Aliases []string `json:"aliases"`
 }
 
-func (u UnitEntry) Validate() error {
+func (u UnitEntry) validate() error {
 	if u.Value == 0 {
 		return fmt.Errorf("value field is required")
 	}
@@ -94,7 +94,7 @@ func parseNextEntry(decoder *json.Decoder) (UnitEntry, error) {
 
 	entry.Name = name
 
-	if err := entry.Validate(); err != nil {
+	if err := entry.validate(); err != nil {
 		return UnitEntry{}, fmt.Errorf("invalid entry %q: %w", name, err)
 	}
 
