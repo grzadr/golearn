@@ -228,3 +228,174 @@ func TestWalkFS_EarlyTermination(t *testing.T) {
 		t.Error("early termination failed: processed all entries")
 	}
 }
+
+func TestWalkEntry_isFile(t *testing.T) {
+	tests := []struct {
+		name     string
+		entry    WalkEntry
+		expected bool
+	}{
+		{
+			name: "regular file",
+			entry: WalkEntry{
+				Path:      "/path/to/file.txt",
+				Name:      "file",
+				Ext:       ".txt",
+				IsDir:     false,
+				IsRegular: true,
+			},
+			expected: true,
+		},
+		{
+			name: "directory",
+			entry: WalkEntry{
+				Path:      "/path/to/dir",
+				Name:      "dir",
+				Ext:       "",
+				IsDir:     true,
+				IsRegular: false,
+			},
+			expected: false,
+		},
+		{
+			name: "special file",
+			entry: WalkEntry{
+				Path:      "/path/to/special",
+				Name:      "special",
+				Ext:       "",
+				IsDir:     false,
+				IsRegular: false,
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.entry.isFile(); got != tt.expected {
+				t.Errorf("WalkEntry.isFile() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestWalkEntry_isFileWithExt(t *testing.T) {
+	tests := []struct {
+		name     string
+		entry    WalkEntry
+		ext      string
+		expected bool
+	}{
+		{
+			name: "matching extension",
+			entry: WalkEntry{
+				Path:      "/path/to/file.txt",
+				Name:      "file",
+				Ext:       ".txt",
+				IsRegular: true,
+			},
+			ext:      ".txt",
+			expected: true,
+		},
+		{
+			name: "non-matching extension",
+			entry: WalkEntry{
+				Path:      "/path/to/file.txt",
+				Name:      "file",
+				Ext:       ".txt",
+				IsRegular: true,
+			},
+			ext:      ".json",
+			expected: false,
+		},
+		{
+			name: "directory with extension",
+			entry: WalkEntry{
+				Path:      "/path/to/dir.txt",
+				Name:      "dir",
+				Ext:       ".txt",
+				IsDir:     true,
+				IsRegular: false,
+			},
+			ext:      ".txt",
+			expected: false,
+		},
+		{
+			name: "case sensitivity check",
+			entry: WalkEntry{
+				Path:      "/path/to/file.TXT",
+				Name:      "file",
+				Ext:       ".TXT",
+				IsRegular: true,
+			},
+			ext:      ".txt",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.entry.isFileWithExt(tt.ext); got != tt.expected {
+				t.Errorf("WalkEntry.isFileWithExt(%q) = %v, want %v", tt.ext, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestWalkEntry_isJSONFile(t *testing.T) {
+	tests := []struct {
+		name     string
+		entry    WalkEntry
+		expected bool
+	}{
+		{
+			name: "valid JSON file",
+			entry: WalkEntry{
+				Path:      "/path/to/config.json",
+				Name:      "config",
+				Ext:       ".json",
+				IsRegular: true,
+			},
+			expected: true,
+		},
+		{
+			name: "JSON directory",
+			entry: WalkEntry{
+				Path:      "/path/to/json",
+				Name:      "json",
+				Ext:       ".json",
+				IsDir:     true,
+				IsRegular: false,
+			},
+			expected: false,
+		},
+		{
+			name: "non-JSON file",
+			entry: WalkEntry{
+				Path:      "/path/to/file.txt",
+				Name:      "file",
+				Ext:       ".txt",
+				IsRegular: true,
+			},
+			expected: false,
+		},
+		{
+			name: "case sensitivity check",
+			entry: WalkEntry{
+				Path:      "/path/to/file.JSON",
+				Name:      "file",
+				Ext:       ".JSON",
+				IsRegular: true,
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.entry.isJSONFile(); got != tt.expected {
+				t.Errorf("WalkEntry.isJSONFile() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
