@@ -22,7 +22,7 @@ lint:
 	# golangci-lint run
 
 test: lint
-	$(GOTEST) -v $(SRC_DIR)
+	$(GOTEST) $(SRC_DIR)
 
 test-cover: test
 	mkdir -p $(COVER_DIR)
