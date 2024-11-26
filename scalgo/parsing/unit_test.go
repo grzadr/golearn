@@ -38,12 +38,13 @@ var testFS = fstest.MapFS{
 	path.Join(testFSDirPath, "empty.json"): {
 		Data: []byte("{}"),
 	},
+	path.Join(testFSDirPath, "text.txt"): {
+		Data: []byte("FILE"),
+	},
 }
 
 func helpVerifyLengths(len_t int, len_r int) error {
-	if len_r == 0 {
-		return fmt.Errorf("UnitRecords has 0 elements")
-	} else if len_t != len_r {
+	if len_t != len_r {
 		return fmt.Errorf("Expected UnitRecords of length %d, got %d instead", len_t, len_r)
 	}
 
@@ -166,6 +167,148 @@ func TestUnitRecords_FindUnit(t *testing.T) {
 		t.Errorf("Found %d errors", num)
 		for _, err := range errors {
 			t.Error(err)
+		}
+	}
+}
+
+func TestNewUnitRecordsFromFS(t *testing.T) {
+	records, err := newUnitRecordsFromFS(testFS, path.Join(testFSDirPath, "test_unit.json"))
+
+	if err != nil {
+		t.Errorf("Unexpected error %v", err)
+		return
+	}
+
+	if len(records) == 0 {
+		t.Error("Units is empty")
+		return
+	}
+
+	errors := helpCompareUnitRecords(&testJsonMap, &records)
+
+	if num_errors := len(errors); num_errors > 0 {
+		t.Errorf("Found %d errors", num_errors)
+		for _, err := range errors {
+			t.Error(err)
+		}
+	}
+}
+
+func TestNewUnitRecordsFromFS_Error(t *testing.T) {
+	records, err := newUnitRecordsFromFS(testFS, path.Join(testFSDirPath, "invalid.json"))
+
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+
+	if err.Error() != "failed to read units/invalid.json: open units/invalid.json: file does not exist" {
+		t.Errorf("Expected different error message: %v", err)
+	}
+
+	if num := len(records); num > 0 {
+		t.Errorf("Expected empty records, got %d instead", num)
+	}
+}
+
+func TestNewUnitFiles(t *testing.T) {
+	files, err := newUnitFiles(testFS, "units")
+
+	if err != nil {
+		t.Errorf("Unexpected error %v", err)
+	}
+
+	if l := len(files); l != 2 {
+		t.Errorf("Excepted 2 files, got %d instead", l)
+	}
+
+	records, found := files["test_unit"]
+
+	if !found {
+		t.Errorf("Expected to find \"test_unit\"")
+	}
+
+	errors := helpCompareUnitRecords(&testJsonMap, &records)
+
+	if num_errors := len(errors); num_errors > 0 {
+		t.Errorf("Found %d errors", num_errors)
+		for _, err := range errors {
+			t.Error(err)
+		}
+	}
+
+	records, found = files["empty"]
+
+	if !found {
+		t.Errorf("Expected to find \"empty\"")
+	}
+
+	if l := len(records); l > 0 {
+		t.Errorf("Expected empty records, got %d instead", l)
+	}
+
+	records, found = files["text"]
+
+	if found {
+		t.Errorf("Expected to not find \"text\" records")
+	}
+}
+
+func TestNewUnitFiles_WrongPath(t *testing.T) {
+	_, err := newUnitFiles(testFS, "wrong")
+
+	if err == nil {
+		t.Error("Expected an error to occur")
+	} else if err.Error() != "open wrong: file does not exist" {
+		t.Errorf("Expected different error: %v", err)
+	}
+
+}
+
+func TestNewUnitFiles_WrongJSON(t *testing.T) {
+	var wrongFS = fstest.MapFS{
+		path.Join(testFSDirPath, "wrong.json"): {
+			Data: []byte(`{
+				"meter": {
+					"value": 0.0
+				},
+			}`),
+		},
+	}
+
+	_, err := newUnitFiles(wrongFS, testFSDirPath)
+
+	if err == nil {
+		t.Error("Expected an error to occur")
+	} else if err.Error() != "invalid entry \"meter\": positive non-zero value field is required" {
+		t.Errorf("Expected different error: %v", err)
+	}
+}
+
+func TestLoadUnitEntriesFilesFromEmbedded(t *testing.T) {
+	entries_files, err := newUnitFilesFromEmbedded()
+
+	if err != nil {
+		t.Errorf("Function returned unexpected error: %v", err)
+	}
+
+	expected_content := map[string]int{
+		"time":   32,
+		"length": 65,
+	}
+
+	if num_files := len(entries_files); num_files != len(expected_content) {
+		t.Errorf("Expected %d UnitEntriesFiles, loaded %d", len(expected_content), num_files)
+	}
+
+	for filename, expected := range expected_content {
+		entry, found := entries_files[filename]
+
+		if !found {
+			t.Errorf("Expected to find `%s`", filename)
+		}
+
+		if entries_n := len(entry); entries_n != expected {
+			t.Errorf("Expected %d UnitEntriesFiles, loaded %d", expected, entries_n)
 		}
 	}
 }
