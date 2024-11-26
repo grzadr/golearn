@@ -162,16 +162,7 @@ func TestIterUnitEntries_ComplexErrors(t *testing.T) {
                     "aliases": ["m"]
                 }
             }`),
-			wantErr: "invalid entry \"meter\": value field is required",
-		},
-		{
-			name: "missing aliases field",
-			input: []byte(`{
-                "meter": {
-                    "value": 1.0
-                }
-            }`),
-			wantErr: "invalid entry \"meter\": aliases field is required",
+			wantErr: "invalid entry \"meter\": positive non-zero value field is required",
 		},
 		{
 			name: "invalid value type",
@@ -234,20 +225,12 @@ func TestUnitEntry_Validate(t *testing.T) {
 				Name:    "meter",
 				Aliases: []string{"m"},
 			},
-			wantErr: "value field is required",
-		},
-		{
-			name: "missing aliases",
-			entry: UnitEntry{
-				Name:  "meter",
-				Value: 1.0,
-			},
-			wantErr: "aliases field is required",
+			wantErr: "positive non-zero value field is required",
 		},
 		{
 			name:    "zero value struct",
 			entry:   UnitEntry{},
-			wantErr: "value field is required",
+			wantErr: "positive non-zero value field is required",
 		},
 	}
 

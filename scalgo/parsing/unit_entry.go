@@ -17,10 +17,7 @@ type UnitEntry struct {
 
 func (u UnitEntry) validate() error {
 	if u.Value == 0 {
-		return fmt.Errorf("value field is required")
-	}
-	if len(u.Aliases) == 0 {
-		return fmt.Errorf("aliases field is required")
+		return fmt.Errorf("positive non-zero value field is required")
 	}
 	return nil
 }
