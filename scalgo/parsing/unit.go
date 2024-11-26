@@ -2,9 +2,9 @@ package parsing
 
 import (
 	"embed"
-	"encoding/json"
-	"fmt"
-	"io/fs"
+	// "encoding/json"
+	// "fmt"
+	// "io/fs"
 )
 
 //go:embed units/*.json
@@ -12,68 +12,87 @@ var unitsFS embed.FS
 
 const UNITS_PATH = "units"
 
-// // Unit represents a single unit entry with its value and aliases
-// type UnitEntry struct {
-// 	Value   float64  `json:"value"`
-// 	Aliases []string `json:"aliases"`
+type Unit struct {
+	Name  string
+	value float64
+}
+
+type UnitRecords map[string]Unit
+type UnitFiles map[string]UnitRecords
+
+func newUnitRecords(json_data []byte) (UnitRecords, error) {
+	result := make(UnitRecords)
+
+	for _, next := range IterUnitEntries(json_data) {
+		if next.Err != nil {
+			return make(UnitRecords), next.Err
+		}
+
+		unit := Unit{Name: next.Entry.Name, value: next.Entry.Value}
+
+		result[unit.Name] = unit
+
+		for _, alias := range next.Entry.Aliases {
+			result[alias] = unit
+		}
+	}
+
+	return result, nil
+}
+
+func (r *UnitRecords) findUnit(alias string) (Unit, bool) {
+	unit, found := (*r)[alias]
+
+	return unit, found
+}
+
+// type UnitEntriesFiles map[string]UnitEntries
+
+// func loadUnitEntriesFromJson(json_data []byte) (UnitEntries, error) {
+// 	units := make(UnitEntries)
+// 	if err := json.Unmarshal(json_data, &units); err != nil {
+// 		return nil, fmt.Errorf("failed to unmarshal json data: %w", err)
+// 	}
+
+// 	return units, nil
 // }
 
-// type UnitEntries map[string]UnitEntry
+// func loadUnitEntriesFromFS(fsys fs.FS, entries_path string) (UnitEntries, error) {
+// 	data, err := fs.ReadFile(fsys, entries_path)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to read %s: %w", entries_path, err)
+// 	}
 
-type UnitEntriesFiles map[string]UnitEntries
+// 	return loadUnitEntriesFromJson(data)
+// }
 
-func loadUnitEntriesFromJson(json_data []byte) (UnitEntries, error) {
-	units := make(UnitEntries)
-	if err := json.Unmarshal(json_data, &units); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal json data: %w", err)
-	}
+// func loadUnitEntriesFilesFromDirectory(fsys fs.FS, dir_path string) (UnitEntriesFiles, error) {
+// 	entries := make(UnitEntriesFiles)
 
-	return units, nil
-}
+// 	for walk_entry, err := range walkFS(fsys, dir_path) {
+// 		if err != nil {
+// 			return make(UnitEntriesFiles), err
+// 		}
 
-func loadUnitEntriesFromFS(fsys fs.FS, entries_path string) (UnitEntries, error) {
-	data, err := fs.ReadFile(fsys, entries_path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read %s: %w", entries_path, err)
-	}
+// 		if !walk_entry.isJSONFile() {
+// 			continue
+// 		}
 
-	return loadUnitEntriesFromJson(data)
-}
+// 		unit_entry, err := loadUnitEntriesFromFS(fsys, walk_entry.Path)
 
-func loadUnitEntriesFilesFromDirectory(fsys fs.FS, dir_path string) (UnitEntriesFiles, error) {
-	entries := make(UnitEntriesFiles)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-	for walk_entry, err := range walkFS(fsys, dir_path) {
-		if err != nil {
-			return make(UnitEntriesFiles), err
-		}
+// 		entries[walk_entry.Name] = unit_entry
+// 	}
 
-		if !walk_entry.isJSONFile() {
-			continue
-		}
+// 	return entries, nil
+// }
 
-		unit_entry, err := loadUnitEntriesFromFS(fsys, walk_entry.Path)
-
-		if err != nil {
-			return nil, err
-		}
-
-		entries[walk_entry.Name] = unit_entry
-	}
-
-	return entries, nil
-}
-
-func loadUnitEntriesFilesFromEmbedded() (UnitEntriesFiles, error) {
-	return loadUnitEntriesFilesFromDirectory(unitsFS, UNITS_PATH)
-}
-
-type Unit struct {
-	Name string
-	unit float64
-}
-
-type UnitAliases []string
+// func loadUnitEntriesFilesFromEmbedded() (UnitEntriesFiles, error) {
+// 	return loadUnitEntriesFilesFromDirectory(unitsFS, UNITS_PATH)
+// }
 
 // type Units map[string]Unit
 // type UnitAliases map[string]*Unit

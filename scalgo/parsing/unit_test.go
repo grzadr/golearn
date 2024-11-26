@@ -1,22 +1,33 @@
 package parsing
 
 import (
+	"encoding/json"
 	"fmt"
 	"path"
 	"testing"
 	"testing/fstest"
 )
 
-var testJsonData = []byte(`{
-    "meter": {
-        "value": 1.0,
-        "aliases": ["m", "meters"]
-    },
-    "kilometer": {
-        "value": 1000.0,
-        "aliases": ["km", "kilometers"]
-    }
-}`)
+type TestEntryRecords map[string]TestEntry
+
+var testJsonMap = TestEntryRecords{
+	"meter": {
+		Value:   1.0,
+		Aliases: []string{"m", "meters"},
+	},
+	"kilometer": {
+		Value:   1000.0,
+		Aliases: []string{"km", "kilometers"},
+	},
+}
+
+var testJsonData []byte = func() []byte {
+	data, err := json.Marshal(testJsonMap)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}()
 
 var testFSDirPath = "units"
 
@@ -29,212 +40,132 @@ var testFS = fstest.MapFS{
 	},
 }
 
-func validateUnitEntry(units UnitEntries) error {
-	if len(units) != 2 {
-		return fmt.Errorf("Expected 2 units, got %d", len(units))
-	}
-
-	meter, exists := units["meter"]
-	if !exists {
-		return fmt.Errorf("expected 'meter' entry to exist")
-	}
-	if meter.Value != 1.0 {
-		return fmt.Errorf("expected meter value to be 1.0, got %f", meter.Value)
-	}
-	if len(meter.Aliases) != 2 {
-		return fmt.Errorf("expected 2 aliases for meter, got %d", len(meter.Aliases))
-	}
-	if meter.Aliases[0] != "m" || meter.Aliases[1] != "meters" {
-		return fmt.Errorf("incorrect aliases for meter: %v", meter.Aliases)
-	}
-
-	km, exists := units["kilometer"]
-	if !exists {
-		return fmt.Errorf("expected 'kilometer' entry to exist")
-	}
-	if km.Value != 1000.0 {
-		return fmt.Errorf("expected kilometer value to be 1000.0, got %f", km.Value)
-	}
-	if len(km.Aliases) != 2 {
-		return fmt.Errorf("expected 2 aliases for kilometer, got %d", len(km.Aliases))
-	}
-	if km.Aliases[0] != "km" || km.Aliases[1] != "kilometers" {
-		return fmt.Errorf("incorrect aliases for kilometer: %v", km.Aliases)
+func helpVerifyLengths(len_t int, len_r int) error {
+	if len_r == 0 {
+		return fmt.Errorf("UnitRecords has 0 elements")
+	} else if len_t != len_r {
+		return fmt.Errorf("Expected UnitRecords of length %d, got %d instead", len_t, len_r)
 	}
 
 	return nil
 }
 
-func validateEmptyUnitEntry(units UnitEntries) error {
-	if len(units) > 0 {
-		return fmt.Errorf("Expected 0 units, got %d", len(units))
+func helpCompareTestUnitEntries(name string, t TestEntry, u Unit) []error {
+	errors := make([]error, 0, 2)
+
+	if name != u.Name {
+		errors = append(errors, fmt.Errorf("Unit %s contains wrong name %s", name, u.Name))
 	}
 
-	return nil
+	if t.Value != u.value {
+		errors = append(errors, fmt.Errorf("Value for Unit %s expected to be %f, got %f instead", name, t.Value, u.value))
+	}
+
+	return errors
 }
 
-func TestLoadUnitEntriesFromJson(t *testing.T) {
-	units, err := loadUnitEntriesFromJson(testJsonData)
+func helpVerifyEntryExists(name string, alias string, ref TestEntry, records *UnitRecords) []error {
+	errors := make([]error, 0, 2)
 
-	if err != nil {
-		t.Errorf("Expected error %v", err)
-	}
-
-	if units == nil {
-		t.Error("Units is nil")
-	}
-
-	if err := validateUnitEntry(units); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestLoadUnitEntriesFromJson_InvalidJSON(t *testing.T) {
-	invalidJson := []byte(`{invalid json}`)
-	entries, err := loadUnitEntriesFromJson(invalidJson)
-
-	if err == nil {
-		t.Error("Expected error, got nil")
-	}
-
-	if entries != nil {
-		t.Errorf("Expected entries to be nil, got %v", entries)
-	}
-}
-
-func TestLoadUnitEntriesFromFS(t *testing.T) {
-	units, err := loadUnitEntriesFromFS(testFS, "units/test_unit.json")
-
-	if err != nil {
-		t.Errorf("Expected error %v", err)
-	}
-
-	if units == nil {
-		t.Error("Units is nil")
-	}
-
-	// Verify that units were loaded correctly
-	if len(units) != 2 {
-		t.Errorf("Expected 2 units, got %d", len(units))
-	}
-
-	// Basic verification of content
-	_, exists := units["meter"]
-	if !exists {
-		t.Error("Expected 'meter' entry to exist")
-	}
-}
-
-func TestLoadUnitEntriesFromFS_InvalidPath(t *testing.T) {
-	entries, err := loadUnitEntriesFromFS(testFS, "nonexistent/path.json")
-
-	if err == nil {
-		t.Error("Expected error, got nil")
-	}
-
-	if entries != nil {
-		t.Errorf("Expected entries to be nil, got %v", entries)
-	}
-}
-
-func TestLoadUnitEntriesFromUnitsPath(t *testing.T) {
-	units, err := loadUnitEntriesFromFS(unitsFS, "units/time.json")
-
-	if err != nil {
-		t.Errorf("Expected error %v", err)
-	}
-
-	if units == nil {
-		t.Error("Units is nil")
-	}
-
-	// Verify that units were loaded correctly
-	if len(units) != 10 {
-		t.Errorf("Expected 10 units, got %d", len(units))
-	}
-
-	// Basic verification of content
-	second_entry, exists := units["second"]
-	if !exists {
-		t.Error("Expected 'second' entry to exist")
-	}
-
-	if second_entry.Value != 1.0 {
-		t.Errorf("Expected value 1.0, got %f instead", second_entry.Value)
-	}
-}
-
-func TestLoadUnitEntriesFromUnitsPath_InvalidPath(t *testing.T) {
-	entries, err := loadUnitEntriesFromFS(unitsFS, "nonexistent/path.json")
-
-	if err == nil {
-		t.Error("Expected error, got nil")
-	}
-
-	if entries != nil {
-		t.Errorf("Expected entries to be nil, got %v", entries)
-	}
-}
-
-func TestLoadUnitEntriesFilesFromDirectory(t *testing.T) {
-	entries_files, err := loadUnitEntriesFilesFromDirectory(testFS, testFSDirPath)
-
-	if err != nil {
-		t.Errorf("Function returned unexpected error: %v", err)
-	}
-
-	expected_files := 2
-
-	if num_files := len(entries_files); num_files != expected_files {
-		t.Errorf("Expected %d UnitEntriesFiles, loaded %d", expected_files, num_files)
-	}
-
-	test_unit_entry, found := entries_files["test_unit"]
+	r_entry, found := (*records)[alias]
 
 	if !found {
-		t.Error("Expected to find `test_unit`")
+		errors = append(errors, fmt.Errorf("Unit %s/%s is missing from UnitRecords", name, alias))
+		return errors
 	}
 
-	if err := validateUnitEntry(test_unit_entry); err != nil {
-		t.Error(err)
+	if err := helpCompareTestUnitEntries(name, ref, r_entry); err != nil {
+		errors = append(errors, err...)
 	}
 
-	test_unit_entry, found = entries_files["empty"]
-
-	if !found {
-		t.Error("Expected to find `empty`")
-	}
-
-	if err := validateEmptyUnitEntry(test_unit_entry); err != nil {
-		t.Error(err)
-	}
+	return errors
 }
 
-func TestLoadUnitEntriesFilesFromEmbedded(t *testing.T) {
-	entries_files, err := loadUnitEntriesFilesFromEmbedded()
+func helpCompareUnitRecords(expected *TestEntryRecords, records *UnitRecords) []error {
+	errors := make([]error, 0, 16)
 
-	if err != nil {
-		t.Errorf("Function returned unexpected error: %v", err)
+	if err := helpVerifyLengths(len(*expected), len(*expected)); err != nil {
+		errors = append(errors, err)
 	}
 
-	expected_content := map[string]int{
-		"time":   10,
-		"length": 21,
-	}
+	for name, ref := range *expected {
+		errors = append(errors, helpVerifyEntryExists(name, name, ref, records)...)
 
-	if num_files := len(entries_files); num_files != len(expected_content) {
-		t.Errorf("Expected %d UnitEntriesFiles, loaded %d", len(expected_content), num_files)
-	}
-
-	for filename, expected := range expected_content {
-		entry, found := entries_files[filename]
-
-		if !found {
-			t.Errorf("Expected to find `%s`", filename)
+		for _, alias := range ref.Aliases {
+			errors = append(errors, helpVerifyEntryExists(name, alias, ref, records)...)
 		}
 
-		if entries_n := len(entry); entries_n != expected {
-			t.Errorf("Expected %d UnitEntriesFiles, loaded %d", expected, entries_n)
+	}
+
+	return errors
+}
+
+func TestNewUnitRecords(t *testing.T) {
+	records, err := newUnitRecords(testJsonData)
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	errors := helpCompareUnitRecords(&testJsonMap, &records)
+
+	if num_errors := len(errors); num_errors > 0 {
+		t.Errorf("Detected %d errors", num_errors)
+	}
+
+	for i, err := range errors {
+		t.Error(err)
+		if i > 9 {
+			break
+		}
+	}
+}
+
+func TestNewUnitRecords_Error(t *testing.T) {
+	records, err := newUnitRecords([]byte(`{
+		"meter": {
+			"aliases": ["m", "meters"]
+		},
+	}`))
+
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+
+	if err.Error() != "invalid entry \"meter\": positive non-zero value field is required" {
+		t.Errorf("Unexpected error message: %s", err.Error())
+	}
+
+	if length := len(records); length > 0 {
+		t.Errorf("Expcted empty slice, got %d elements instead", length)
+	}
+}
+
+func TestUnitRecords_FindUnit(t *testing.T) {
+	records, err := newUnitRecords(testJsonData)
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	existing_name := "meter"
+
+	unit, found := records.findUnit(existing_name)
+
+	if !found {
+		t.Errorf("Expected to find \"%s\" Unit", existing_name)
+	}
+
+	ref := testJsonMap[existing_name]
+
+	errors := helpCompareTestUnitEntries(existing_name, ref, unit)
+
+	if num := len(errors); num > 0 {
+		t.Errorf("Found %d errors", num)
+		for _, err := range errors {
+			t.Error(err)
 		}
 	}
 }
