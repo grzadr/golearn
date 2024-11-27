@@ -1,0 +1,38 @@
+package parsing
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+type Measure struct {
+	Value float64
+	Unit  Unit
+}
+
+func newMeasure(unit_files *UnitFiles, measure string) (Measure, error) {
+
+	value_s, label, found := strings.Cut(strings.TrimSpace(measure), " ")
+
+	if !found {
+		return Measure{}, fmt.Errorf("failed to split %s by space", measure)
+	}
+
+	_, unit, found := unit_files.findUnit(label)
+
+	if !found {
+		return Measure{}, fmt.Errorf("Unit %s was not found", measure)
+	}
+
+	value, err := strconv.ParseFloat(value_s, 10)
+
+	if err != nil {
+		return Measure{}, fmt.Errorf("Failed to convert %s to f64", measure)
+	}
+
+	return Measure{
+		Value: value * unit.value,
+		Unit:  unit,
+	}, nil
+}

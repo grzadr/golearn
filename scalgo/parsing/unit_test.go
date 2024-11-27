@@ -312,3 +312,47 @@ func TestLoadUnitEntriesFilesFromEmbedded(t *testing.T) {
 		}
 	}
 }
+
+func TestNewUnitFilesFindUnit(t *testing.T) {
+	files, err := newUnitFiles(testFS, "units")
+
+	if err != nil {
+		t.Errorf("Unexpected error %v", err)
+	}
+
+	file_name, unit, found := files.findUnit("kilometers")
+
+	if !found {
+		t.Error("Expected to find kilometers")
+	}
+
+	if unit.Name != "kilometer" || unit.value != 1000.0 {
+		t.Errorf("Wrong unit retrieved %v", unit)
+	}
+
+	if file_name != "test_unit" {
+		t.Errorf("Expected file name to be \"test_unit\", got %s", file_name)
+	}
+}
+
+func TestNewUnitFilesFindUnit_NotFound(t *testing.T) {
+	files, err := newUnitFiles(testFS, "units")
+
+	if err != nil {
+		t.Errorf("Unexpected error %v", err)
+	}
+
+	file_name, unit, found := files.findUnit("light years")
+
+	if found {
+		t.Error("Not expected to find \"light years\"")
+	}
+
+	if unit.Name != "" || unit.value != 0.0 {
+		t.Errorf("Wrong unit retrieved %v", unit)
+	}
+
+	if file_name != "" {
+		t.Errorf("Expected file name to be \"\", got %s", file_name)
+	}
+}

@@ -87,6 +87,18 @@ func newUnitFiles(fsys fs.FS, dir_path string) (UnitFiles, error) {
 	return files, nil
 }
 
+func (u *UnitFiles) findUnit(alias string) (string, Unit, bool) {
+	for file_name, records := range *u {
+		unit, found := records.findUnit(alias)
+
+		if found {
+			return file_name, unit, true
+		}
+	}
+
+	return "", Unit{}, false
+}
+
 func newUnitFilesFromEmbedded() (UnitFiles, error) {
 	return newUnitFiles(unitsFS, UNITS_PATH)
 }
