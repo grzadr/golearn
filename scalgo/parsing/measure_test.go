@@ -1,6 +1,7 @@
 package parsing
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -14,22 +15,95 @@ var TestUnitFiles = func() UnitFiles {
 	return files
 }()
 
-func TestNewMeasure(t *testing.T) {
-	measure, err := newMeasure(&TestUnitFiles, "42 kilometers")
+func TestNewMeasureInvalid(t *testing.T) {
+	// Using table-driven tests for better organization and coverage
+	tests := []struct {
+		name        string
+		input       string
+		wantValue   float64
+		wantUnit    string
+		wantBaseVal float64
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:        "valid kilometer measurement",
+			input:       "42 kilometers",
+			wantValue:   42000.0,
+			wantUnit:    "kilometer",
+			wantBaseVal: 1000.0,
+			wantErr:     false,
+		},
+		{
+			name:        "missing space between value and unit",
+			input:       "42kilometers",
+			wantErr:     true,
+			errContains: "failed to split",
+		},
+		{
+			name:        "unknown unit",
+			input:       "42 lightyears",
+			wantErr:     true,
+			errContains: "was not found",
+		},
+		{
+			name:        "invalid numeric value",
+			input:       "4x2 kilometers",
+			wantErr:     true,
+			errContains: "Failed to convert",
+		},
 
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+		{
+			name:        "extra whitespace handling",
+			input:       "  42   kilometers  ",
+			wantValue:   42000.0,
+			wantUnit:    "kilometer",
+			wantBaseVal: 1000.0,
+			wantErr:     false,
+		},
+		{
+			name:        "zero value",
+			input:       "0 kilometers",
+			wantValue:   0.0,
+			wantUnit:    "kilometer",
+			wantBaseVal: 1000.0,
+			wantErr:     false,
+		},
 	}
 
-	if measure.Value != 42000.0 {
-		t.Errorf("Expected Value to equal %f, got %f", 42000.0, measure.Value)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			measure, err := newMeasure(&TestUnitFiles, tt.input)
 
-	if measure.Unit.value != 1000.0 {
-		t.Errorf("Expected Unit.value to equal %f, got %f", 1000.0, measure.Unit.value)
-	}
+			// Error case handling
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("newMeasure() expected error containing %q, got nil", tt.errContains)
+					return
+				}
+				if !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("newMeasure() error = %v, want error containing %q", err, tt.errContains)
+				}
+				return
+			}
 
-	if measure.Unit.Name != "kilometer" {
-		t.Errorf("Expected Unit.Name to equal %s, got %s", "kilometer", measure.Unit.Name)
+			// Success case validation
+			if err != nil {
+				t.Errorf("newMeasure() unexpected error: %v", err)
+				return
+			}
+
+			if measure.Value != tt.wantValue {
+				t.Errorf("Value = %v, want %v", measure.Value, tt.wantValue)
+			}
+
+			if measure.Unit.Name != tt.wantUnit {
+				t.Errorf("Unit.Name = %v, want %v", measure.Unit.Name, tt.wantUnit)
+			}
+
+			if measure.Unit.value != tt.wantBaseVal {
+				t.Errorf("Unit.value = %v, want %v", measure.Unit.value, tt.wantBaseVal)
+			}
+		})
 	}
 }

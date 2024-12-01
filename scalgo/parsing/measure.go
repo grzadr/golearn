@@ -19,13 +19,13 @@ func newMeasure(unit_files *UnitFiles, measure string) (Measure, error) {
 		return Measure{}, fmt.Errorf("failed to split %s by space", measure)
 	}
 
-	_, unit, found := unit_files.findUnit(label)
+	_, unit, found := unit_files.findUnit(strings.TrimSpace(label))
 
 	if !found {
 		return Measure{}, fmt.Errorf("Unit %s was not found", measure)
 	}
 
-	value, err := strconv.ParseFloat(value_s, 10)
+	value, err := strconv.ParseFloat(strings.TrimSpace(value_s), 10)
 
 	if err != nil {
 		return Measure{}, fmt.Errorf("Failed to convert %s to f64", measure)
