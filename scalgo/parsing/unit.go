@@ -16,11 +16,13 @@ var unitsFS embed.FS
 const UNITS_PATH = "units"
 
 type Unit struct {
-	Name  string
-	value float64
+	Name       string
+	multiplier float64
 }
 
-
+func (u *Unit) isEmpty() bool {
+	return u.multiplier == 0.0
+}
 
 type UnitRecords map[string]Unit
 type UnitFiles map[string]UnitRecords
@@ -35,7 +37,7 @@ func newUnitRecords(json_data []byte) (UnitRecords, error) {
 			return make(UnitRecords), next.Err
 		}
 
-		unit := Unit{Name: next.Entry.Name, value: next.Entry.Value}
+		unit := Unit{Name: next.Entry.Name, multiplier: next.Entry.Value}
 
 		result[unit.Name] = unit
 

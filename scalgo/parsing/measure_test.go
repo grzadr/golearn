@@ -101,8 +101,8 @@ func TestNewMeasureInvalid(t *testing.T) {
 				t.Errorf("Unit.Name = %v, want %v", measure.Unit.Name, tt.wantUnit)
 			}
 
-			if measure.Unit.value != tt.wantBaseVal {
-				t.Errorf("Unit.value = %v, want %v", measure.Unit.value, tt.wantBaseVal)
+			if measure.Unit.multiplier != tt.wantBaseVal {
+				t.Errorf("Unit.value = %v, want %v", measure.Unit.multiplier, tt.wantBaseVal)
 			}
 		})
 	}

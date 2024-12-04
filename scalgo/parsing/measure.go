@@ -11,6 +11,10 @@ type Measure struct {
 	Unit  Unit
 }
 
+func (m *Measure) isEmpty() bool {
+	return m.Unit.isEmpty()
+}
+
 func newMeasure(unit_files *UnitFiles, measure string) (Measure, error) {
 
 	value_s, label, found := strings.Cut(strings.TrimSpace(measure), " ")
@@ -32,7 +36,7 @@ func newMeasure(unit_files *UnitFiles, measure string) (Measure, error) {
 	}
 
 	return Measure{
-		Value: value * unit.value,
+		Value: value * unit.multiplier,
 		Unit:  unit,
 	}, nil
 }

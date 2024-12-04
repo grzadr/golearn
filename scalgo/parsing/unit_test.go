@@ -58,8 +58,8 @@ func helpCompareTestUnitEntries(name string, t TestEntry, u Unit) []error {
 		errors = append(errors, fmt.Errorf("Unit %s contains wrong name %s", name, u.Name))
 	}
 
-	if t.Value != u.value {
-		errors = append(errors, fmt.Errorf("Value for Unit %s expected to be %f, got %f instead", name, t.Value, u.value))
+	if t.Value != u.multiplier {
+		errors = append(errors, fmt.Errorf("Value for Unit %s expected to be %f, got %f instead", name, t.Value, u.multiplier))
 	}
 
 	return errors
@@ -326,7 +326,7 @@ func TestNewUnitFilesFindUnit(t *testing.T) {
 		t.Error("Expected to find kilometers")
 	}
 
-	if unit.Name != "kilometer" || unit.value != 1000.0 {
+	if unit.Name != "kilometer" || unit.multiplier != 1000.0 {
 		t.Errorf("Wrong unit retrieved %v", unit)
 	}
 
@@ -348,7 +348,7 @@ func TestNewUnitFilesFindUnit_NotFound(t *testing.T) {
 		t.Error("Not expected to find \"light years\"")
 	}
 
-	if unit.Name != "" || unit.value != 0.0 {
+	if unit.Name != "" || unit.multiplier != 0.0 {
 		t.Errorf("Wrong unit retrieved %v", unit)
 	}
 
