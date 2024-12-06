@@ -19,7 +19,7 @@ build: $(BIN_DIR)
 
 lint:
 	go fmt $(SRC_DIR)
-	# golangci-lint run
+	golangci-lint run
 
 test: lint
 	$(GOTEST) $(SRC_DIR)

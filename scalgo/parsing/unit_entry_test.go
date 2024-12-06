@@ -123,16 +123,18 @@ func TestIterUnitEntries_InvalidJSON(t *testing.T) {
 	}
 }
 
-// Add this as a separate test function
 func TestParseNextEntry_NonStringKey(t *testing.T) {
 	input := []byte(`{"1": {"value": 1.0, "aliases": ["m"]}}`)
 	decoder := json.NewDecoder(bytes.NewReader(input))
 
-	// Skip the opening brace
-	decoder.Token()
+	for i := 0; i < 2; i++ {
+		_, err := decoder.Token()
 
-	// Read the next token but replace it with a number
-	decoder.Token()
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
 	entry, err := parseNextEntry(decoder)
 
 	if err == nil {

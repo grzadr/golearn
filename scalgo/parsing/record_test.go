@@ -1,12 +1,11 @@
 package parsing
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 )
 
-func helperCompareRecords(ref *Record, other *Record) error {
+func helperCompareRecords(ref *Record, other *Record) []error {
 	detected := make([]error, 0, 16)
 
 	if ref.Label != other.Label {
@@ -25,11 +24,7 @@ func helperCompareRecords(ref *Record, other *Record) error {
 		detected = append(detected, fmt.Errorf("Expected multiplier %f, got %f", ref.Measure.Unit.multiplier, other.Measure.Unit.multiplier))
 	}
 
-	if len(detected) > 0 {
-		return errors.Join(detected...)
-	}
-
-	return nil
+	return detected
 }
 
 func TestNewRecord(t *testing.T) {
@@ -52,7 +47,5 @@ func TestNewRecord(t *testing.T) {
 		t.Errorf("newRecord returned an error: %v", err)
 	}
 
-	if err := helperCompareRecords(&expected, &record); err != nil {
-		t.Errorf("Found differences from expected: %v", err)
-	}
+	registerErrors(helperCompareRecords(&expected, &record), "Detected difference between Records", t)
 }

@@ -11,9 +11,13 @@ type Measure struct {
 	Unit  Unit
 }
 
-func (m *Measure) isEmpty() bool {
-	return m.Unit.isEmpty()
+func (m *Measure) getBaseValue() float64 {
+	return m.Value * m.Unit.multiplier
 }
+
+// func (m *Measure) isEmpty() bool {
+// 	return m.Unit.isEmpty()
+// }
 
 func newMeasure(unit_files *UnitFiles, measure string) (Measure, error) {
 
@@ -29,14 +33,14 @@ func newMeasure(unit_files *UnitFiles, measure string) (Measure, error) {
 		return Measure{}, fmt.Errorf("Unit %s was not found", measure)
 	}
 
-	value, err := strconv.ParseFloat(strings.TrimSpace(value_s), 10)
+	value, err := strconv.ParseFloat(strings.TrimSpace(value_s), 64)
 
 	if err != nil {
 		return Measure{}, fmt.Errorf("Failed to convert %s to f64", measure)
 	}
 
 	return Measure{
-		Value: value * unit.multiplier,
+		Value: value,
 		Unit:  unit,
 	}, nil
 }

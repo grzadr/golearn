@@ -49,7 +49,7 @@ func (o *Options) setScale(has_value bool, value string, unit_files *UnitFiles) 
 	scale, err := newMeasure(unit_files, value)
 
 	if err != nil {
-		fmt.Errorf("Wrong scale measure: %w", err)
+		return fmt.Errorf("Wrong scale measure: %w", err)
 	}
 
 	o.scale = &scale
@@ -99,18 +99,20 @@ func prepareOption(option string) (name string, value string, has_value bool) {
 func (e *Enlistment) applyOption(option string, unit_files *UnitFiles) error {
 	name, value, has_value := prepareOption(option)
 
+	var err error
+
 	switch name {
 	case "@scale":
-		e.options.setScale(has_value, value, unit_files)
+		err = e.options.setScale(has_value, value, unit_files)
 	case "@sort":
-		e.options.setSort(has_value, value)
+		err = e.options.setSort(has_value, value)
 	case "@reverse":
-		e.options.setReversed(has_value, value)
+		err = e.options.setReversed(has_value, value)
 	default:
-		fmt.Errorf("Unknown option: %s", option)
+		err = fmt.Errorf("Unknown option: %s", option)
 	}
 
-	return nil
+	return err
 }
 
 func (e *Enlistment) enabledSort() bool {
@@ -128,9 +130,9 @@ func (e *Enlistment) SortRecords() {
 
 	sort.Slice(e.records, func(i, j int) bool {
 		if e.enabledReversed() {
-			return e.records[i].Value < e.records[j].Value
+			return e.records[i].getBaseValue() < e.records[j].getBaseValue()
 		}
-		return e.records[i].Value > e.records[j].Value
+		return e.records[i].getBaseValue() > e.records[j].getBaseValue()
 	})
 
 	e.options.sort = true
@@ -187,7 +189,7 @@ func ScanReaderIntoEnlistment(reader io.Reader, unit_files *UnitFiles) (*Enlistm
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.HasPrefix(line, CommentPrefix) {
+		if len(line) == 0 || strings.HasPrefix(line, CommentPrefix) {
 			continue
 		}
 		if strings.HasPrefix(line, SettingPrefix) {

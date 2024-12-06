@@ -1,7 +1,6 @@
 package parsing
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -9,10 +8,10 @@ import (
 )
 
 const EnlistmentTestVarBasicString string = `@scale 1 year
-Item 2: 50 minutes
+Item 2: 15 minutes
 
-Item 3: 10 minutes
-Item 1: 100 minutes
+Item 3: 60 seconds
+Item 1: 1 hour
 
 `
 
@@ -20,17 +19,17 @@ var EnlistmentTestBasicRecordSlice []Record = []Record{
 	{
 		Label: "Item 1",
 		Measure: Measure{
-			Value: 100,
+			Value: 1,
 			Unit: Unit{
-				Name:       "minute",
-				multiplier: 60,
+				Name:       "hour",
+				multiplier: 3600,
 			},
 		},
 	},
 	{
 		Label: "Item 2",
 		Measure: Measure{
-			Value: 10,
+			Value: 15,
 			Unit: Unit{
 				Name:       "minute",
 				multiplier: 60,
@@ -40,10 +39,10 @@ var EnlistmentTestBasicRecordSlice []Record = []Record{
 	{
 		Label: "Item 3",
 		Measure: Measure{
-			Value: 50,
+			Value: 60,
 			Unit: Unit{
-				Name:       "minute",
-				multiplier: 60,
+				Name:       "second",
+				multiplier: 1,
 			},
 		},
 	},
@@ -66,24 +65,23 @@ var EnlistmentTestVarBasicObj Enlistment = Enlistment{
 }
 
 func helperCompareRecordSlice(ref *[]Record, sub *[]Record) []error {
-	var errs []error
 
 	// Guard against nil pointers
 	if ref == nil || sub == nil {
-		return append(errs, fmt.Errorf("nil slice pointer provided"))
+		return []error{fmt.Errorf("nil slice pointer provided")}
 	}
 
 	// Compare lengths
 	if len(*ref) != len(*sub) {
-		errs = append(errs, fmt.Errorf("slices have different lengths: ref=%d, sub=%d",
-			len(*ref), len(*sub)))
-		// Return early as order comparison wouldn't make sense
-		return errs
+		return []error{fmt.Errorf("slices have different lengths: ref=%d, sub=%d",
+			len(*ref), len(*sub))}
 	}
+
+	errs := make([]error, 0, len(*ref)*6)
 
 	for i := range len(*ref) {
 		fmt.Printf("Record %d", i)
-		errs = append(errs, helperCompareRecords(&(*ref)[i], &(*sub)[i]))
+		errs = append(errs, helperCompareRecords(&(*ref)[i], &(*sub)[i])...)
 	}
 
 	return errs
@@ -129,50 +127,32 @@ func helperCompareOptions(ref Options, sub Options) []error {
 	return errs
 }
 
-func helperCompareEnlistment(ref *Enlistment, sub *Enlistment) error {
-	errs := make([]error, 0, 16)
+func helperCompareEnlistment(ref *Enlistment, sub *Enlistment) []error {
+
 	if sub == nil {
-		return fmt.Errorf("Expected enlistment to not be nil")
+		return []error{fmt.Errorf("Expected enlistment to not be nil")}
 	}
 
-	option_errs := helperCompareOptions(ref.options, sub.options)
+	errs := make([]error, 0, 16)
 
-	if len(option_errs) > 0 {
-		errs = append(errs, option_errs...)
-	}
+	errs = append(errs, helperCompareOptions(ref.options, sub.options)...)
+	errs = append(errs, helperCompareRecordSlice(&ref.records, &sub.records)...)
+	errs = append(errs, helperCompareRecords(ref.ref, sub.ref)...)
 
-	records_errs := helperCompareRecordSlice(&ref.records, &sub.records)
-
-	if len(records_errs) > 0 {
-		errs = append(errs, records_errs...)
-	}
-
-	if ref_err := helperCompareRecords(ref.ref, sub.ref); ref_err != nil {
-		errs = append(errs, ref_err)
-	}
-
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
-
-	return nil
+	return errs
 }
 
 func TestNewRecordEnlistmentFromReader(t *testing.T) {
-	// Given
 	reader := strings.NewReader(EnlistmentTestVarBasicString)
 
-	// When
 	enlistment, err := NewRecordEnlistmentFromReader(reader, embedded_units)
 
-	// Then
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
+		return
 	}
 
-	if err := helperCompareEnlistment(&EnlistmentTestVarBasicObj, enlistment); err != nil {
-		t.Errorf("Enlistment differ from reference:\n%v", err)
-	}
-
-	// Add more specific assertions based on your expected output
+	registerErrors(
+		helperCompareEnlistment(&EnlistmentTestVarBasicObj, enlistment),
+		"Enlistment differ from reference", t)
 }

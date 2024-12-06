@@ -29,7 +29,7 @@ func TestNewMeasureInvalid(t *testing.T) {
 		{
 			name:        "valid kilometer measurement",
 			input:       "42 kilometers",
-			wantValue:   42000.0,
+			wantValue:   42.0,
 			wantUnit:    "kilometer",
 			wantBaseVal: 1000.0,
 			wantErr:     false,
@@ -56,7 +56,7 @@ func TestNewMeasureInvalid(t *testing.T) {
 		{
 			name:        "extra whitespace handling",
 			input:       "  42   kilometers  ",
-			wantValue:   42000.0,
+			wantValue:   42.0,
 			wantUnit:    "kilometer",
 			wantBaseVal: 1000.0,
 			wantErr:     false,
