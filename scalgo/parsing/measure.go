@@ -15,9 +15,9 @@ func (m *Measure) getBaseValue() float64 {
 	return m.Value * m.Unit.multiplier
 }
 
-// func (m *Measure) isEmpty() bool {
-// 	return m.Unit.isEmpty()
-// }
+func (m *Measure) isEmpty() bool {
+	return m.Value == 0 && m.Unit.isEmpty()
+}
 
 func newMeasure(unit_files *UnitFiles, measure string) (Measure, error) {
 

@@ -20,9 +20,9 @@ type Unit struct {
 	multiplier float64
 }
 
-// func (u *Unit) isEmpty() bool {
-// 	return u.multiplier == 0.0
-// }
+func (u *Unit) isEmpty() bool {
+	return u.multiplier == 0.0
+}
 
 type UnitRecords map[string]Unit
 type UnitFiles map[string]UnitRecords

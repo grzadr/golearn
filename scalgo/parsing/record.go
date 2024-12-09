@@ -10,6 +10,10 @@ type Record struct {
 	Measure
 }
 
+func (r *Record) isEmpty() bool {
+	return len(r.Label) == 0 && r.Measure.isEmpty()
+}
+
 func newRecord(query string, unit_files *UnitFiles) (Record, error) {
 	label, measure_str, found := strings.Cut(query, ": ")
 
