@@ -4,12 +4,154 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	// "testing/fstest"
+	"testing/fstest"
 )
+
+func TestIsTrue(t *testing.T) {
+	test_cases := []struct {
+		has_value bool
+		value     string
+		expected  bool
+	}{
+		{
+			has_value: false,
+			value:     "true",
+			expected:  true,
+		},
+		{
+			has_value: true,
+			value:     "true",
+			expected:  true,
+		},
+		{
+			has_value: false,
+			value:     "false",
+			expected:  true,
+		},
+		{
+			has_value: true,
+			value:     "false",
+			expected:  false,
+		},
+		{
+			has_value: true,
+			value:     "",
+			expected:  false,
+		},
+	}
+
+	for _, tc := range test_cases {
+		if res := isTrue(tc.has_value, tc.value); res != tc.expected {
+			t.Errorf("Result %t differs from %+v", res, tc)
+		}
+	}
+}
+
+func TestIsFalse(t *testing.T) {
+	test_cases := []struct {
+		value    string
+		expected bool
+	}{
+		{
+			value:    "false",
+			expected: true,
+		},
+		{
+			value:    "true",
+			expected: false,
+		},
+		{
+			value:    "",
+			expected: false,
+		},
+	}
+
+	for _, tc := range test_cases {
+		if res := isFalse(tc.value); res != tc.expected {
+			t.Errorf("Result %t differs from %+v", res, tc)
+		}
+	}
+}
+
+func TestSetFlag(t *testing.T) {
+	test_cases := []struct {
+		has_value bool
+		value     string
+		flag      bool
+		expected  bool
+		error_msg string
+	}{
+		{
+			has_value: false,
+			value:     "true",
+			flag:      false,
+			expected:  true,
+		},
+		{
+			has_value: true,
+			value:     "true",
+			flag:      false,
+			expected:  true,
+		},
+		{
+			has_value: false,
+			value:     "false",
+			flag:      false,
+			expected:  true,
+		},
+		{
+			has_value: true,
+			value:     "false",
+			flag:      true,
+			expected:  false,
+		},
+		{
+			has_value: true,
+			value:     "",
+			flag:      true,
+			expected:  false,
+			error_msg: "Unknown value: ",
+		},
+	}
+
+	for _, tc := range test_cases {
+		flag := &tc.flag
+		if len(tc.error_msg) > 0 {
+			if err := setFlag(flag, tc.has_value, tc.value); err == nil || err.Error() != tc.error_msg {
+				t.Errorf("Expected error %s, got %v", tc.error_msg, err)
+			}
+		} else {
+			err := setFlag(flag, tc.has_value, tc.value)
+			if err != nil {
+				t.Errorf("Unexpected error %v", err)
+			}
+
+			if *flag != tc.expected {
+				t.Errorf("Expected %+v, got %t", tc, *flag)
+			}
+		}
+	}
+}
 
 const EnlistmentTestVarBasicString string = `@scale 1 year
 Item 2: 15 minutes
 
+Item 3: 60 seconds
+Item 1: 1 hour
+
+`
+
+const EnlistmentTestVarReversedString string = `@scale 1 year
+Item 2: 15 minutes
+@reverse
+Item 3: 60 seconds
+Item 1: 1 hour
+
+`
+
+const EnlistmentTestVarUnsortedString string = `@scale 1 year
+Item 2: 15 minutes
+@sort false
 Item 3: 60 seconds
 Item 1: 1 hour
 
@@ -48,6 +190,72 @@ var EnlistmentTestBasicRecordSlice []Record = []Record{
 	},
 }
 
+var EnlistmentTestReverseRecordSlice []Record = []Record{
+	{
+		Label: "Item 3",
+		Measure: Measure{
+			Value: 60,
+			Unit: Unit{
+				Name:       "second",
+				multiplier: 1,
+			},
+		},
+	},
+	{
+		Label: "Item 2",
+		Measure: Measure{
+			Value: 15,
+			Unit: Unit{
+				Name:       "minute",
+				multiplier: 60,
+			},
+		},
+	},
+	{
+		Label: "Item 1",
+		Measure: Measure{
+			Value: 1,
+			Unit: Unit{
+				Name:       "hour",
+				multiplier: 3600,
+			},
+		},
+	},
+}
+
+var EnlistmentTestUnsortedRecordSlice []Record = []Record{
+	{
+		Label: "Item 2",
+		Measure: Measure{
+			Value: 15,
+			Unit: Unit{
+				Name:       "minute",
+				multiplier: 60,
+			},
+		},
+	},
+	{
+		Label: "Item 3",
+		Measure: Measure{
+			Value: 60,
+			Unit: Unit{
+				Name:       "second",
+				multiplier: 1,
+			},
+		},
+	},
+	{
+		Label: "Item 1",
+		Measure: Measure{
+			Value: 1,
+			Unit: Unit{
+				Name:       "hour",
+				multiplier: 3600,
+			},
+		},
+	},
+}
+
 var EnlistmentTestVarBasicObj Enlistment = Enlistment{
 	options: Options{
 		sort:     true,
@@ -62,6 +270,38 @@ var EnlistmentTestVarBasicObj Enlistment = Enlistment{
 	},
 	records: EnlistmentTestBasicRecordSlice,
 	ref:     &EnlistmentTestBasicRecordSlice[0],
+}
+
+var EnlistmentTestVarReverseObj Enlistment = Enlistment{
+	options: Options{
+		sort:     true,
+		reversed: true,
+		scale: &Measure{
+			Value: 1,
+			Unit: Unit{
+				Name:       "year",
+				multiplier: 31536000,
+			},
+		},
+	},
+	records: EnlistmentTestReverseRecordSlice,
+	ref:     &EnlistmentTestReverseRecordSlice[0],
+}
+
+var EnlistmentTestVarUnsortedObj Enlistment = Enlistment{
+	options: Options{
+		sort:     false,
+		reversed: false,
+		scale: &Measure{
+			Value: 1,
+			Unit: Unit{
+				Name:       "year",
+				multiplier: 31536000,
+			},
+		},
+	},
+	records: EnlistmentTestUnsortedRecordSlice,
+	ref:     &EnlistmentTestUnsortedRecordSlice[2],
 }
 
 func helperCompareRecordSlice(ref *[]Record, sub *[]Record) []error {
@@ -146,6 +386,55 @@ func TestNewRecordEnlistmentFromReader(t *testing.T) {
 	reader := strings.NewReader(EnlistmentTestVarBasicString)
 
 	enlistment, err := NewRecordEnlistmentFromReader(reader, embedded_units)
+
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+		return
+	}
+
+	registerErrors(
+		helperCompareEnlistment(&EnlistmentTestVarBasicObj, enlistment),
+		"Enlistment differ from reference", t)
+}
+
+func TestNewRecordEnlistmentReverse(t *testing.T) {
+	reader := strings.NewReader(EnlistmentTestVarReversedString)
+
+	enlistment, err := NewRecordEnlistmentFromReader(reader, embedded_units)
+
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+		return
+	}
+
+	registerErrors(
+		helperCompareEnlistment(&EnlistmentTestVarReverseObj, enlistment),
+		"Enlistment differ from reference", t)
+}
+
+func TestNewRecordEnlistmentUnsorted(t *testing.T) {
+	reader := strings.NewReader(EnlistmentTestVarUnsortedString)
+
+	enlistment, err := NewRecordEnlistmentFromReader(reader, embedded_units)
+
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+		return
+	}
+
+	registerErrors(
+		helperCompareEnlistment(&EnlistmentTestVarUnsortedObj, enlistment),
+		"Enlistment differ from reference", t)
+}
+
+var enlistmentTestFS = fstest.MapFS{
+	"test_enlistment.txt": {
+		Data: []byte(EnlistmentTestVarBasicString),
+	},
+}
+
+func TestNewRecordEnlistmentFromFile(t *testing.T) {
+	enlistment, err := NewRecordEnlistmentFromFile(enlistmentTestFS, "test_enlistment.txt", embedded_units)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)

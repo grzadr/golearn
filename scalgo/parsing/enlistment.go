@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"math"
-	"os"
+	// "os"
 	"sort"
 	"strings"
 )
@@ -35,9 +36,11 @@ func setFlag(flag *bool, has_value bool, value string) error {
 	}
 	return nil
 }
+
 func (o *Options) setSort(has_value bool, value string) error {
 	return setFlag(&o.sort, has_value, value)
 }
+
 func (o *Options) setReversed(has_value bool, value string) error {
 	return setFlag(&o.reversed, has_value, value)
 }
@@ -173,7 +176,7 @@ func (e *Enlistment) findRefRecord() (ref *Record) {
 	ref = &e.records[0]
 
 	for _, record := range e.records[1:] {
-		compared := compareFunc(float64(ref.Value), float64(record.Value))
+		compared := compareFunc(float64(ref.getBaseValue()), float64(record.getBaseValue()))
 
 		if ref.Value != compared {
 			ref = &record
@@ -233,8 +236,9 @@ func NewRecordEnlistmentFromReader(reader io.Reader, unit_files *UnitFiles) (*En
 	return enlistment, nil
 }
 
-func NewRecordEnlistmentFromFile(filename string, unit_files *UnitFiles) (*Enlistment, error) {
-	file, err := os.Open(filename)
+func NewRecordEnlistmentFromFile(fsys fs.FS, filename string, unit_files *UnitFiles) (*Enlistment, error) {
+	file, err := fsys.Open(filename)
+
 	if err != nil {
 		return &Enlistment{}, err
 	}
