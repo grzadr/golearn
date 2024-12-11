@@ -19,6 +19,13 @@ func (m *Measure) isEmpty() bool {
 	return m.Value == 0 && m.Unit.isEmpty()
 }
 
+func (m *Measure) Scale() Measure {
+	return Measure{
+		Value: m.Value,
+		Unit: m.Unit,
+	}
+}
+
 func newMeasure(unit_files *UnitFiles, measure string) (Measure, error) {
 
 	value_s, label, found := strings.Cut(strings.TrimSpace(measure), " ")

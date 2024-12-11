@@ -1,7 +1,20 @@
 package main
 
-import "fmt"
+import (
+    "flag"
+    "fmt"
+	
+)
 
 func main() {
-	fmt.Println("Hello, World!")
+    enlistmentPath := flag.String("enlistment_path", "", "Path to the enlistment directory")
+    flag.Parse()
+
+    if *enlistmentPath == "" {
+        fmt.Println("Error: enlistment_path is required")
+        flag.Usage()
+        return
+    }
+
+    fmt.Printf("Enlistment path: %s\n", *enlistmentPath)
 }

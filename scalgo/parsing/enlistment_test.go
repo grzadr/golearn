@@ -256,17 +256,19 @@ var EnlistmentTestUnsortedRecordSlice []Record = []Record{
 	},
 }
 
+var EnlistmentTestScale Measure = Measure{
+	Value: 1,
+	Unit: Unit{
+		Name:       "year",
+		multiplier: 31536000,
+	},
+}
+
 var EnlistmentTestVarBasicObj Enlistment = Enlistment{
 	options: Options{
 		sort:     true,
 		reversed: false,
-		scale: &Measure{
-			Value: 1,
-			Unit: Unit{
-				Name:       "year",
-				multiplier: 31536000,
-			},
-		},
+		scale:    &EnlistmentTestScale,
 	},
 	records: EnlistmentTestBasicRecordSlice,
 	ref:     &EnlistmentTestBasicRecordSlice[0],
@@ -276,13 +278,7 @@ var EnlistmentTestVarReverseObj Enlistment = Enlistment{
 	options: Options{
 		sort:     true,
 		reversed: true,
-		scale: &Measure{
-			Value: 1,
-			Unit: Unit{
-				Name:       "year",
-				multiplier: 31536000,
-			},
-		},
+		scale:    &EnlistmentTestScale,
 	},
 	records: EnlistmentTestReverseRecordSlice,
 	ref:     &EnlistmentTestReverseRecordSlice[0],
@@ -292,13 +288,7 @@ var EnlistmentTestVarUnsortedObj Enlistment = Enlistment{
 	options: Options{
 		sort:     false,
 		reversed: false,
-		scale: &Measure{
-			Value: 1,
-			Unit: Unit{
-				Name:       "year",
-				multiplier: 31536000,
-			},
-		},
+		scale:    &EnlistmentTestScale,
 	},
 	records: EnlistmentTestUnsortedRecordSlice,
 	ref:     &EnlistmentTestUnsortedRecordSlice[2],
