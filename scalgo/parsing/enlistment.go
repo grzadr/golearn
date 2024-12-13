@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-type Options struct {
+type EnlistmentOptions struct {
 	sort     bool
 	reversed bool
 	scale    *Measure
@@ -36,16 +36,14 @@ func setFlag(flag *bool, has_value bool, value string) error {
 	}
 	return nil
 }
-
-func (o *Options) setSort(has_value bool, value string) error {
+func (o *EnlistmentOptions) setSort(has_value bool, value string) error {
 	return setFlag(&o.sort, has_value, value)
 }
-
-func (o *Options) setReversed(has_value bool, value string) error {
+func (o *EnlistmentOptions) setReversed(has_value bool, value string) error {
 	return setFlag(&o.reversed, has_value, value)
 }
 
-func (o *Options) setScale(has_value bool, value string, unit_files *UnitFiles) error {
+func (o *EnlistmentOptions) setScale(has_value bool, value string, unit_files *UnitFiles) error {
 	if !has_value {
 		return fmt.Errorf("Missing measure")
 	}
@@ -60,18 +58,18 @@ func (o *Options) setScale(has_value bool, value string, unit_files *UnitFiles) 
 	return nil
 }
 
-func (o *Options) hasScale() bool {
+func (o *EnlistmentOptions) hasScale() bool {
 	return o.scale != nil
 }
 
-func newOptions() Options {
-	return Options{sort: true,
+func newOptions() EnlistmentOptions {
+	return EnlistmentOptions{sort: true,
 		reversed: false,
 		scale:    &Measure{}}
 }
 
 type Enlistment struct {
-	options Options
+	options EnlistmentOptions
 	records []Record
 	ref     *Record
 }

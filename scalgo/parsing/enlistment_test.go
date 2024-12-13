@@ -265,7 +265,7 @@ var EnlistmentTestScale Measure = Measure{
 }
 
 var EnlistmentTestVarBasicObj Enlistment = Enlistment{
-	options: Options{
+	options: EnlistmentOptions{
 		sort:     true,
 		reversed: false,
 		scale:    &EnlistmentTestScale,
@@ -318,7 +318,7 @@ func helperCompareRecordSlice(ref *[]Record, sub *[]Record) []error {
 
 }
 
-func helperCompareOptions(ref Options, sub Options) []error {
+func helperCompareOptions(ref EnlistmentOptions, sub EnlistmentOptions) []error {
 	var errs []error
 
 	// Compare basic fields
