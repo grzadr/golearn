@@ -5,9 +5,10 @@ package parsing
 
 import (
 	"embed"
-	// "encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
+	"sort"
 )
 
 //go:embed units/*.json
@@ -25,6 +26,8 @@ func (u *Unit) isEmpty() bool {
 }
 
 type UnitRecords map[string]Unit
+
+type UnitSlice []Unit
 
 type UnitFiles map[string]UnitRecords
 
@@ -54,6 +57,40 @@ func (r *UnitRecords) findUnit(alias string) (Unit, bool) {
 	unit, found := (*r)[alias]
 
 	return unit, found
+}
+
+func (r *UnitRecords) len() int {
+	return len(*r)
+}
+
+func (r *UnitRecords) makeOrderedSliceUpTo(last_name string) (
+	units UnitSlice, err error,
+) {
+	if r.len() == 0 {
+		return units, nil
+	}
+	units = make(UnitSlice, 0, r.len())
+	last_unit, found := r.findUnit(last_name)
+
+	units = append(units, last_unit)
+
+	if !found {
+		return units, fmt.Errorf("Failed to find unit %s", last_name)
+	}
+	for unit := range maps.Values(*r) {
+		if unit.multiplier < last_unit.multiplier {
+			units = append(units, unit)
+		}
+	}
+
+	sort.Slice(
+		units,
+		func(i, j int) bool {
+			return units[i].multiplier > units[j].multiplier
+		},
+	)
+
+	return units, nil
 }
 
 func newUnitRecordsFromFS(fsys fs.FS, entries_path string) (UnitRecords, error) {

@@ -14,6 +14,13 @@ func (r *Record) isEmpty() bool {
 	return len(r.Label) == 0 && r.Measure.isEmpty()
 }
 
+func (r *Record) scale(ref *Record, scale *Measure) Record {
+	return Record {
+		Label: r.Label,
+		Measure: r.Measure.scale(&ref.Measure, scale),
+	}
+}
+
 func splitRecordString(str string) (label, measure_str string, err error) {
 	var found bool
 	label, measure_str, found = strings.Cut(str, ": ")

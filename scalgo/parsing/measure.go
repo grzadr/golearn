@@ -19,7 +19,7 @@ func (m *Measure) isEmpty() bool {
 	return m.Value == 0 && m.Unit.isEmpty()
 }
 
-func (m *Measure) Scale(ref *Measure, scale *Measure) Measure {
+func (m *Measure) scale(ref *Measure, scale *Measure) Measure {
 	return Measure{
 		Value: (m.getBaseValue() / ref.getBaseValue()) * scale.getBaseValue(),
 		Unit:  Unit{},

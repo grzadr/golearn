@@ -269,3 +269,20 @@ func NewRecordEnlistmentFromFile(fsys fs.FS, filename string, unit_files *UnitFi
 
 	return NewRecordEnlistmentFromReader(file, unit_files)
 }
+
+func (e *Enlistment) scaleRecords(unit_files *UnitFiles) (records RecordSlice) {
+	scale := e.options.scale
+
+	units := (*unit_files)[e.unit_file]
+
+	units.makeOrderedSliceUpTo(scale.Unit.Name)
+
+	records = make(RecordSlice, 0, len(e.records))
+
+	for _, r := range e.records {
+		new := r.scale(e.ref, scale)
+
+	}
+
+	return records
+}

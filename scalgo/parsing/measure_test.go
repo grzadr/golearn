@@ -203,7 +203,7 @@ func TestMeasureScale(t *testing.T) {
 		},
 	}
 
-	result := test_case.Scale(&reference, &scale)
+	result := test_case.scale(&reference, &scale)
 
 	registerErrors(
 		helperCompareMeasure(expected, result),
