@@ -22,7 +22,7 @@ func (m *Measure) isEmpty() bool {
 func (m *Measure) Scale() Measure {
 	return Measure{
 		Value: m.Value,
-		Unit: m.Unit,
+		Unit:  m.Unit,
 	}
 }
 

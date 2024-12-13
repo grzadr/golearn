@@ -275,7 +275,7 @@ var EnlistmentTestVarBasicObj Enlistment = Enlistment{
 }
 
 var EnlistmentTestVarReverseObj Enlistment = Enlistment{
-	options: Options{
+	options: EnlistmentOptions{
 		sort:     true,
 		reversed: true,
 		scale:    &EnlistmentTestScale,
@@ -285,7 +285,7 @@ var EnlistmentTestVarReverseObj Enlistment = Enlistment{
 }
 
 var EnlistmentTestVarUnsortedObj Enlistment = Enlistment{
-	options: Options{
+	options: EnlistmentOptions{
 		sort:     false,
 		reversed: false,
 		scale:    &EnlistmentTestScale,
