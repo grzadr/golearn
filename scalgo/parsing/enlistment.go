@@ -13,9 +13,10 @@ import (
 )
 
 type EnlistmentOptions struct {
-	sort     bool
-	reversed bool
-	scale    *Measure
+	sort            bool
+	reversed        bool
+	scale           *Measure
+	scale_unit_file string
 }
 
 func isTrue(has_value bool, value string) bool {
@@ -47,13 +48,14 @@ func (o *EnlistmentOptions) setScale(has_value bool, value string, unit_files *U
 	if !has_value {
 		return fmt.Errorf("Missing measure")
 	}
-	scale, err := newMeasure(unit_files, value)
+	scale, unit_file, err := newMeasure(unit_files, value)
 
 	if err != nil {
 		return fmt.Errorf("Wrong scale measure: %w", err)
 	}
 
 	o.scale = &scale
+	o.scale_unit_file = unit_file
 
 	return nil
 }
@@ -69,9 +71,10 @@ func newOptions() EnlistmentOptions {
 }
 
 type Enlistment struct {
-	options EnlistmentOptions
-	records []Record
-	ref     *Record
+	options   EnlistmentOptions
+	records   []Record
+	ref       *Record
+	unit_file string
 }
 
 const CommentPrefix = "#"
@@ -184,8 +187,30 @@ func (e *Enlistment) findRefRecord() (ref *Record) {
 	return ref
 }
 
-func ScanReaderIntoEnlistment(reader io.Reader, unit_files *UnitFiles) (*Enlistment, error) {
-	enlistment := NewEnlistment()
+func (e *Enlistment) appendLine(line string, unit_files *UnitFiles) error {
+	record, unit_file, err := newRecord(line, unit_files)
+	if err != nil {
+		return err
+	}
+
+	if e.unit_file == "" {
+		e.unit_file = unit_file
+	} else if e.unit_file != unit_file {
+		return fmt.Errorf(
+			"Expected unit from %s for line `%s`, got %s",
+			e.unit_file,
+			line,
+			unit_file,
+		)
+	}
+
+	e.records = append(e.records, record)
+
+	return nil
+}
+
+func ScanReaderIntoEnlistment(reader io.Reader, unit_files *UnitFiles) (enlistment *Enlistment, err error) {
+	enlistment = NewEnlistment()
 	scanner := bufio.NewScanner(reader)
 
 	for scanner.Scan() {
@@ -201,11 +226,9 @@ func ScanReaderIntoEnlistment(reader io.Reader, unit_files *UnitFiles) (*Enlistm
 			continue
 		}
 
-		record, err := newRecord(line, unit_files)
-		if err != nil {
+		if err := enlistment.appendLine(line, unit_files); err != nil {
 			return enlistment, err
 		}
-		enlistment.records = append(enlistment.records, record)
 	}
 
 	if err := scanner.Err(); err != nil {

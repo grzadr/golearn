@@ -68,7 +68,7 @@ func newMeasure(unit_files *UnitFiles, measure_str string) (
 	}
 
 	measure = Measure{
-		Value: value, 
+		Value: value,
 		Unit:  unit,
 	}
 

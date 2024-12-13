@@ -14,21 +14,41 @@ func (r *Record) isEmpty() bool {
 	return len(r.Label) == 0 && r.Measure.isEmpty()
 }
 
-func newRecord(query string, unit_files *UnitFiles) (Record, error) {
-	label, measure_str, found := strings.Cut(query, ": ")
+func splitRecordString(str string) (label, measure_str string, err error) {
+	var found bool
+	label, measure_str, found = strings.Cut(str, ": ")
 
 	if !found {
-		return Record{}, fmt.Errorf("Record `%s` missing `: `", query)
+		return label, measure_str, fmt.Errorf("Record `%s` missing `: `", str)
 	}
+
+	label = strings.TrimSpace(label)
 
 	if len(label) == 0 {
-		return Record{}, fmt.Errorf("Record `%s` missing label", query)
+		return label, measure_str, fmt.Errorf("Record `%s` missing label", str)
 	}
 
-	measure, err := newMeasure(unit_files, measure_str)
+	return label, measure_str, nil
+}
+
+func newRecord(record_str string, unit_files *UnitFiles) (record Record, unit_file string, err error) {
+	label, measure_str, err := splitRecordString(record_str)
 
 	if err != nil {
-		return Record{}, err
+		return record, unit_file, err
 	}
-	return Record{Label: strings.TrimSpace(label), Measure: measure}, nil
+
+	var measure Measure
+
+	measure, unit_file, err = newMeasure(unit_files, measure_str)
+
+	if err != nil {
+		return record, unit_file, err
+	}
+
+	record = Record{
+		Label:   label,
+		Measure: measure,
+	}
+	return record, unit_file, nil
 }
