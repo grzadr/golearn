@@ -54,7 +54,7 @@ func helperCompareNextPair[T1, T2 comparable](
 		if i >= expected_len {
 			errs = append(
 				errs,
-				fmt.Errorf("Index %d exceeds expected length %d",i, expected_len),
+				fmt.Errorf("Index %d exceeds expected length %d", i, expected_len),
 			)
 			return errs
 		}
