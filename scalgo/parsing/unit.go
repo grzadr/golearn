@@ -25,6 +25,7 @@ func (u *Unit) isEmpty() bool {
 }
 
 type UnitRecords map[string]Unit
+
 type UnitFiles map[string]UnitRecords
 
 var embedded_units *UnitFiles
@@ -91,12 +92,16 @@ func newUnitFiles(fsys fs.FS, dir_path string) (UnitFiles, error) {
 	return files, nil
 }
 
-func (u *UnitFiles) findUnit(alias string) (string, Unit, bool) {
-	for file_name, records := range *u {
+func (u *UnitFiles) findUnit(alias string) (
+	unit_file string,
+	unit Unit,
+	found bool,
+) {
+	for unit_file, records := range *u {
 		unit, found := records.findUnit(alias)
 
 		if found {
-			return file_name, unit, true
+			return unit_file, unit, true
 		}
 	}
 
