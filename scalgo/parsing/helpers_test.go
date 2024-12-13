@@ -38,7 +38,11 @@ func IterZip[T1, T2 any](s1 []T1, s2 []T2) iter.Seq2[int, NextPair[T1, T2]] {
 	}
 }
 
-func helperCompareNextPair[T1, T2 comparable](s1 []T1, s2 []T2, expected []NextPair[T1, T2]) []error {
+func helperCompareNextPair[T1, T2 comparable](
+	s1 []T1,
+	s2 []T2,
+	expected []NextPair[T1, T2],
+) []error {
 	expected_len := len(expected)
 
 	errs := make([]error, 0, expected_len+1)
@@ -48,16 +52,24 @@ func helperCompareNextPair[T1, T2 comparable](s1 []T1, s2 []T2, expected []NextP
 	for i, pair := range IterZip(s1, s2) {
 		last_visited = i
 		if i >= expected_len {
-			errs = append(errs, fmt.Errorf("Index %d exceeds expected length %d", i, expected_len))
+			errs = append(
+				errs,
+				fmt.Errorf("Index %d exceeds expected length %d",i, expected_len),
+			)
 			return errs
 		}
 		if ref := expected[i]; pair != ref {
-			errs = append(errs, fmt.Errorf("Expected %v, but got %v", ref, pair))
+			errs = append(
+				errs,
+				fmt.Errorf("Expected %v, but got %v", ref, pair),
+			)
 		}
 	}
 
 	if last_visited < expected_len-1 {
-		errs = append(errs, fmt.Errorf("IterZip visited %d instead of %d", last_visited+1, expected_len))
+		errs = append(
+			errs,
+			fmt.Errorf("IterZip visited %d instead of %d", last_visited+1, expected_len))
 	}
 
 	return errs
