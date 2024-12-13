@@ -70,9 +70,11 @@ func newOptions() EnlistmentOptions {
 		scale:    &Measure{}}
 }
 
+type RecordSlice []Record
+
 type Enlistment struct {
 	options   EnlistmentOptions
-	records   []Record
+	records   RecordSlice
 	ref       *Record
 	unit_file string
 }
@@ -82,7 +84,7 @@ const SettingPrefix = "@"
 
 func NewEnlistment() *Enlistment {
 	return &Enlistment{
-		records: make([]Record, 0, 32),
+		records: make(RecordSlice, 0, 32),
 		ref:     nil,
 		options: newOptions(),
 	}

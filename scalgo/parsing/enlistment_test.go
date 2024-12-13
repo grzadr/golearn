@@ -294,7 +294,7 @@ var EnlistmentTestVarUnsortedObj Enlistment = Enlistment{
 	ref:     &EnlistmentTestUnsortedRecordSlice[2],
 }
 
-func helperCompareRecordSlice(ref *[]Record, sub *[]Record) []error {
+func helperCompareRecordSlice(ref *RecordSlice, sub *RecordSlice) []error {
 
 	// Guard against nil pointers
 	if ref == nil || sub == nil {

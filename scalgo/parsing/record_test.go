@@ -41,13 +41,27 @@ func TestNewRecord(t *testing.T) {
 		},
 	}
 
-	record, err := newRecord(query, embedded_units)
+	expected_unit_file := "time"
+
+	record, unit_file, err := newRecord(query, embedded_units)
 
 	if err != nil {
 		t.Errorf("newRecord returned an error: %v", err)
 	}
 
-	registerErrors(helperCompareRecords(&expected, &record), "Detected difference between Records", t)
+	registerErrors(
+		helperCompareRecords(&expected, &record),
+		"Detected difference between Records",
+		t,
+	)
+
+	if unit_file != expected_unit_file {
+		t.Errorf(
+			"Expected unit_file `%s`, got %s",
+			expected_unit_file,
+			unit_file,
+		)
+	}
 }
 
 func TestNewRecordError(t *testing.T) {
@@ -74,7 +88,7 @@ func TestNewRecordError(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		record, err := newRecord(c.input, embedded_units)
+		record, unit_file, err := newRecord(c.input, embedded_units)
 
 		if !record.isEmpty() {
 			t.Errorf("Test %s: Expected nil, got %v", c.name, record)
@@ -82,6 +96,10 @@ func TestNewRecordError(t *testing.T) {
 
 		if err == nil || err.Error() != c.err {
 			t.Errorf("Test %s: Expected error %s, got %v", c.name, c.err, err)
+		}
+
+		if unit_file != "" {
+			t.Errorf("Expected empty unit_file, got %s", unit_file)
 		}
 
 	}

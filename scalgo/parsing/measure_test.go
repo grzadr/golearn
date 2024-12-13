@@ -54,21 +54,23 @@ func helperCompareMeasure(exp Measure, res Measure) []error {
 func TestNewMeasureInvalid(t *testing.T) {
 	// Using table-driven tests for better organization and coverage
 	tests := []struct {
-		name        string
-		input       string
-		wantValue   float64
-		wantUnit    string
-		wantBaseVal float64
-		wantErr     bool
-		errContains string
+		name         string
+		input        string
+		wantValue    float64
+		wantUnit     string
+		wantBaseVal  float64
+		wantErr      bool
+		errContains  string
+		wantUnitFile string
 	}{
 		{
-			name:        "valid kilometer measurement",
-			input:       "42 kilometers",
-			wantValue:   42.0,
-			wantUnit:    "kilometer",
-			wantBaseVal: 1000.0,
-			wantErr:     false,
+			name:         "valid kilometer measurement",
+			input:        "42 kilometers",
+			wantValue:    42.0,
+			wantUnit:     "kilometer",
+			wantBaseVal:  1000.0,
+			wantErr:      false,
+			wantUnitFile: "test_unit",
 		},
 		{
 			name:        "missing space between value and unit",
@@ -90,26 +92,28 @@ func TestNewMeasureInvalid(t *testing.T) {
 		},
 
 		{
-			name:        "extra whitespace handling",
-			input:       "  42   kilometers  ",
-			wantValue:   42.0,
-			wantUnit:    "kilometer",
-			wantBaseVal: 1000.0,
-			wantErr:     false,
+			name:         "extra whitespace handling",
+			input:        "  42   kilometers  ",
+			wantValue:    42.0,
+			wantUnit:     "kilometer",
+			wantBaseVal:  1000.0,
+			wantErr:      false,
+			wantUnitFile: "test_unit",
 		},
 		{
-			name:        "zero value",
-			input:       "0 kilometers",
-			wantValue:   0.0,
-			wantUnit:    "kilometer",
-			wantBaseVal: 1000.0,
-			wantErr:     false,
+			name:         "zero value",
+			input:        "0 kilometers",
+			wantValue:    0.0,
+			wantUnit:     "kilometer",
+			wantBaseVal:  1000.0,
+			wantErr:      false,
+			wantUnitFile: "test_unit",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			measure, err := newMeasure(&TestUnitFiles, tt.input)
+			measure, unit_file, err := newMeasure(&TestUnitFiles, tt.input)
 
 			// Error case handling
 			if tt.wantErr {
@@ -157,6 +161,14 @@ func TestNewMeasureInvalid(t *testing.T) {
 					"Unit.value = %v, want %v",
 					measure.Unit.multiplier,
 					tt.wantBaseVal,
+				)
+			}
+
+			if unit_file != tt.wantUnitFile {
+				t.Errorf(
+					"unit_file = %s, want %s",
+					unit_file,
+					tt.wantUnitFile,
 				)
 			}
 		})
