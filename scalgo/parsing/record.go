@@ -21,6 +21,10 @@ func (r *Record) scale(ref *Record, scale *Measure) Record {
 	}
 }
 
+func (r *Record) str(units *UnitSlice, max_units int) string {
+	return fmt.Sprintf("%s: %s", r.Label, r.Measure.str(units, max_units))
+}
+
 func splitRecordString(str string) (label, measure_str string, err error) {
 	var found bool
 	label, measure_str, found = strings.Cut(str, ": ")

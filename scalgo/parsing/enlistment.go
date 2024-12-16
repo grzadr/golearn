@@ -72,9 +72,15 @@ func newOptions() EnlistmentOptions {
 
 type RecordSlice []Record
 
-func (rs *RecordSlice) str(units *UnitRecords, ref Record) iter.Seq2[int, string] {
-	return func(yield func(int, string) bool) {
-		
+func (rs *RecordSlice) str(units *UnitRecords, ref Record, max_units int) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		picked_units := units.makeOrderedSliceUpTo(ref.getBaseValue())
+
+		for _, record := range *rs {
+			if !yield(record.str(&picked_units, max_units)) {
+				return
+			}
+		}
 	}
 }
 

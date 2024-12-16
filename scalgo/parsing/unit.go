@@ -96,7 +96,13 @@ func (ur *UnitRecords) makeOrderedSliceUpTo(last_value float64) (
 
 	units = make(UnitSlice, 0, ur.Len())
 
+	seen := make(map[string]struct{}, ur.Len())
+
 	for unit := range maps.Values(ur.units) {
+		if _, found := seen[unit.Name]; found {
+			continue
+		}
+		seen[unit.Name] = struct{}{}
 		if unit.multiplier <= last_value {
 			units = append(units, unit)
 		}

@@ -2,6 +2,7 @@ package parsing
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -491,10 +492,29 @@ func TestEnlistmentScaleRecords(t *testing.T) {
 
 var FixtureExpectedRecordSliceStr = []string{
 	"Item 1: 1 year",
-	"Item 2: 3 months",
+	"Item 2: 3 month, 1 day, 6.00 hour",
 	"Item 3: 6 day, 2 hour",
 }
 
 func TestRecordSliceStr(t *testing.T) {
-	FixtureScaledRecordSlice.str()
+	time_units := (*embedded_units)["time"]
+	ref := FixtureScaledRecordSlice[0]
+
+	result := slices.Collect(FixtureScaledRecordSlice.str(&time_units, ref, 3))
+
+	if len(result) != len(FixtureExpectedRecordSliceStr) {
+		t.Errorf(
+			"Expected result of length %d, got %d",
+			len(result),
+			len(FixtureExpectedRecordSliceStr),
+		)
+		return
+	}
+
+	for i, p := range IterZip(FixtureExpectedRecordSliceStr, result) {
+
+		if p.First != p.Second {
+			t.Errorf("Expected Item %d to be %s, got %s", i+1, p.First, p.Second)
+		}
+	}
 }

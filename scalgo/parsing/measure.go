@@ -2,6 +2,7 @@ package parsing
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -24,6 +25,40 @@ func (m *Measure) scale(ref *Measure, scale *Measure) Measure {
 		Value: (m.getBaseValue() / ref.getBaseValue()) * scale.getBaseValue(),
 		Unit:  Unit{},
 	}
+}
+
+func (m *Measure) str(units *UnitSlice, max_units int) string {
+	result := ""
+	// prev_unit := Unit{}
+	used_units := 0
+	leftover := m.getBaseValue()
+	for _, unit := range *units {
+		if leftover == 0.0 {
+			break
+		}
+		// if leftover >= m.getBaseValue() {
+		// 	prev_unit = unit
+		// 	continue
+		// }
+
+		part := math.Floor(leftover / unit.multiplier)
+		if part <= 0.0 {
+			continue
+		}
+
+		used_units++
+
+		if used_units == max_units {
+			result += fmt.Sprintf(", %.02f %s", leftover/unit.multiplier, unit.Name)
+			break
+		}
+
+		leftover = leftover - (part * unit.multiplier)
+
+		result += fmt.Sprintf(", %d %s", int(part), unit.Name)
+	}
+
+	return result[2:]
 }
 
 func splitMeasureString(measure string) (string, string, error) {
