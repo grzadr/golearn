@@ -15,8 +15,8 @@ func (r *Record) isEmpty() bool {
 }
 
 func (r *Record) scale(ref *Record, scale *Measure) Record {
-	return Record {
-		Label: r.Label,
+	return Record{
+		Label:   r.Label,
 		Measure: r.Measure.scale(&ref.Measure, scale),
 	}
 }
@@ -38,7 +38,11 @@ func splitRecordString(str string) (label, measure_str string, err error) {
 	return label, measure_str, nil
 }
 
-func newRecord(record_str string, unit_files *UnitFiles) (record Record, unit_file string, err error) {
+func newRecord(record_str string, unit_files *UnitFiles) (
+	record Record,
+	unit_file string,
+	err error,
+) {
 	label, measure_str, err := splitRecordString(record_str)
 
 	if err != nil {

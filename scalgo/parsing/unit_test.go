@@ -68,7 +68,7 @@ func helpCompareTestUnitEntries(name string, t TestEntry, u Unit) []error {
 func helpVerifyEntryExists(name string, alias string, ref TestEntry, records *UnitRecords) []error {
 	errors := make([]error, 0, 2)
 
-	r_entry, found := (*records)[alias]
+	r_entry, found := records.findUnit(alias)
 
 	if !found {
 		errors = append(errors, fmt.Errorf("Unit %s/%s is missing from UnitRecords", name, alias))
@@ -138,7 +138,7 @@ func TestNewUnitRecords_Error(t *testing.T) {
 		t.Errorf("Unexpected error message: %s", err.Error())
 	}
 
-	if length := len(records); length > 0 {
+	if length := records.Len(); length > 0 {
 		t.Errorf("Expcted empty slice, got %d elements instead", length)
 	}
 }
@@ -179,7 +179,7 @@ func TestNewUnitRecordsFromFS(t *testing.T) {
 		return
 	}
 
-	if len(records) == 0 {
+	if records.Len() == 0 {
 		t.Error("Units is empty")
 		return
 	}
@@ -205,7 +205,7 @@ func TestNewUnitRecordsFromFS_Error(t *testing.T) {
 		t.Errorf("Expected different error message: %v", err)
 	}
 
-	if num := len(records); num > 0 {
+	if num := records.Len(); num > 0 {
 		t.Errorf("Expected empty records, got %d instead", num)
 	}
 }
@@ -242,7 +242,7 @@ func TestNewUnitFiles(t *testing.T) {
 		t.Errorf("Expected to find \"empty\"")
 	}
 
-	if l := len(records); l > 0 {
+	if l := records.Len(); l > 0 {
 		t.Errorf("Expected empty records, got %d instead", l)
 	}
 
@@ -291,13 +291,32 @@ func TestLoadUnitEntriesFilesFromEmbedded(t *testing.T) {
 		t.Errorf("Function returned unexpected error: %v", err)
 	}
 
-	expected_content := map[string]int{
-		"time":   32,
-		"length": 65,
+	expected_content := map[string]struct {
+		n         int
+		base_unit Unit
+	}{
+		"time": {
+			n: 32,
+			base_unit: Unit{
+				Name:       "second",
+				multiplier: 1.0,
+			},
+		},
+		"length": {
+			n: 65,
+			base_unit: Unit{
+				Name:       "meter",
+				multiplier: 1.0,
+			},
+		},
 	}
 
 	if num_files := len(entries_files); num_files != len(expected_content) {
-		t.Errorf("Expected %d UnitEntriesFiles, loaded %d", len(expected_content), num_files)
+		t.Errorf(
+			"Expected %d UnitEntriesFiles, loaded %d",
+			len(expected_content),
+			num_files,
+		)
 	}
 
 	for filename, expected := range expected_content {
@@ -307,8 +326,20 @@ func TestLoadUnitEntriesFilesFromEmbedded(t *testing.T) {
 			t.Errorf("Expected to find `%s`", filename)
 		}
 
-		if entries_n := len(entry); entries_n != expected {
-			t.Errorf("Expected %d UnitEntriesFiles, loaded %d", expected, entries_n)
+		if entries_n := entry.Len(); entries_n != expected.n {
+			t.Errorf(
+				"Expected %d UnitEntriesFiles, got %d",
+				expected.n,
+				entries_n,
+			)
+		}
+
+		if entry.base_unit != expected.base_unit {
+			t.Errorf(
+				"Expected base unit %v, got %v",
+				expected.base_unit,
+				entry.base_unit,
+			)
 		}
 	}
 }

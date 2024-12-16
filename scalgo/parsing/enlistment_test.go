@@ -270,8 +270,9 @@ var EnlistmentTestVarBasicObj Enlistment = Enlistment{
 		reversed: false,
 		scale:    &EnlistmentTestScale,
 	},
-	records: EnlistmentTestBasicRecordSlice,
-	ref:     &EnlistmentTestBasicRecordSlice[0],
+	records:   EnlistmentTestBasicRecordSlice,
+	ref:       &EnlistmentTestBasicRecordSlice[0],
+	unit_file: "time",
 }
 
 var EnlistmentTestVarReverseObj Enlistment = Enlistment{
@@ -309,9 +310,9 @@ func helperCompareRecordSlice(ref *RecordSlice, sub *RecordSlice) []error {
 
 	errs := make([]error, 0, len(*ref)*6)
 
-	for i := range len(*ref) {
-		fmt.Printf("Record %d", i)
-		errs = append(errs, helperCompareRecords(&(*ref)[i], &(*sub)[i])...)
+	for i, p := range IterZip(*ref, *sub) {
+		fmt.Printf("Record %d\n", i)
+		errs = append(errs, helperCompareRecords(&p.First, &p.Second)...)
 	}
 
 	return errs
@@ -375,7 +376,7 @@ func helperCompareEnlistment(ref *Enlistment, sub *Enlistment) []error {
 func TestNewRecordEnlistmentFromReader(t *testing.T) {
 	reader := strings.NewReader(EnlistmentTestVarBasicString)
 
-	enlistment, err := NewRecordEnlistmentFromReader(reader, embedded_units)
+	enlistment, err := NewEnlistmentFromReader(reader, embedded_units)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -390,7 +391,7 @@ func TestNewRecordEnlistmentFromReader(t *testing.T) {
 func TestNewRecordEnlistmentReverse(t *testing.T) {
 	reader := strings.NewReader(EnlistmentTestVarReversedString)
 
-	enlistment, err := NewRecordEnlistmentFromReader(reader, embedded_units)
+	enlistment, err := NewEnlistmentFromReader(reader, embedded_units)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -405,7 +406,7 @@ func TestNewRecordEnlistmentReverse(t *testing.T) {
 func TestNewRecordEnlistmentUnsorted(t *testing.T) {
 	reader := strings.NewReader(EnlistmentTestVarUnsortedString)
 
-	enlistment, err := NewRecordEnlistmentFromReader(reader, embedded_units)
+	enlistment, err := NewEnlistmentFromReader(reader, embedded_units)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -424,7 +425,11 @@ var enlistmentTestFS = fstest.MapFS{
 }
 
 func TestNewRecordEnlistmentFromFile(t *testing.T) {
-	enlistment, err := NewRecordEnlistmentFromFile(enlistmentTestFS, "test_enlistment.txt", embedded_units)
+	enlistment, err := NewEnlistmentFromFile(
+		enlistmentTestFS,
+		"test_enlistment.txt",
+		embedded_units,
+	)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -434,4 +439,62 @@ func TestNewRecordEnlistmentFromFile(t *testing.T) {
 	registerErrors(
 		helperCompareEnlistment(&EnlistmentTestVarBasicObj, enlistment),
 		"Enlistment differ from reference", t)
+}
+
+var FixtureScaledRecordSlice = RecordSlice{
+	Record{
+		Label: "Item 1",
+		Measure: Measure{
+			Value: 31536000,
+			Unit: Unit{
+				Name:       "second",
+				multiplier: 1,
+			},
+		},
+	},
+	Record{
+		Label: "Item 2",
+		Measure: Measure{
+			Value: 7884000,
+			Unit: Unit{
+				Name:       "second",
+				multiplier: 1,
+			},
+		},
+	},
+	Record{
+		Label: "Item 3",
+		Measure: Measure{
+			Value: 525600,
+			Unit: Unit{
+				Name:       "second",
+				multiplier: 1,
+			},
+		},
+	},
+}
+
+func TestEnlistmentScaleRecords(t *testing.T) {
+	result, err := EnlistmentTestVarBasicObj.scaleRecords(embedded_units)
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	registerErrors(
+		helperCompareRecordSlice(&FixtureScaledRecordSlice, &result),
+		"Enlistment.scaleRecords failed tests",
+		t,
+	)
+}
+
+var FixtureExpectedRecordSliceStr = []string{
+	"Item 1: 1 year",
+	"Item 2: 3 months",
+	"Item 3: 6 day, 2 hour",
+}
+
+func TestRecordSliceStr(t *testing.T) {
+	FixtureScaledRecordSlice.str()
 }

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"iter"
 	"math"
-	// "os"
 	"sort"
 	"strings"
 )
@@ -71,6 +71,12 @@ func newOptions() EnlistmentOptions {
 }
 
 type RecordSlice []Record
+
+func (rs *RecordSlice) str(units *UnitRecords, ref Record) iter.Seq2[int, string] {
+	return func(yield func(int, string) bool) {
+		
+	}
+}
 
 type Enlistment struct {
 	options   EnlistmentOptions
@@ -211,6 +217,27 @@ func (e *Enlistment) appendLine(line string, unit_files *UnitFiles) error {
 	return nil
 }
 
+func (e *Enlistment) scaleRecords(unit_files *UnitFiles) (
+	records RecordSlice, err error,
+) {
+	scale := e.options.scale
+	records = make(RecordSlice, 0, len(e.records))
+
+	units, found := (*unit_files)[e.unit_file]
+
+	if !found {
+		return records, fmt.Errorf("Failed to find unit file %s", e.unit_file)
+	}
+
+	for _, r := range e.records {
+		scaled := r.scale(e.ref, scale)
+		scaled.Measure.Unit = units.base_unit
+		records = append(records, scaled)
+	}
+
+	return records, nil
+}
+
 func ScanReaderIntoEnlistment(reader io.Reader, unit_files *UnitFiles) (enlistment *Enlistment, err error) {
 	enlistment = NewEnlistment()
 	scanner := bufio.NewScanner(reader)
@@ -240,7 +267,7 @@ func ScanReaderIntoEnlistment(reader io.Reader, unit_files *UnitFiles) (enlistme
 	return enlistment, nil
 }
 
-func NewRecordEnlistmentFromReader(reader io.Reader, unit_files *UnitFiles) (*Enlistment, error) {
+func NewEnlistmentFromReader(reader io.Reader, unit_files *UnitFiles) (*Enlistment, error) {
 	enlistment, err := ScanReaderIntoEnlistment(reader, unit_files)
 	if err != nil {
 		return enlistment, err
@@ -259,7 +286,11 @@ func NewRecordEnlistmentFromReader(reader io.Reader, unit_files *UnitFiles) (*En
 	return enlistment, nil
 }
 
-func NewRecordEnlistmentFromFile(fsys fs.FS, filename string, unit_files *UnitFiles) (*Enlistment, error) {
+func NewEnlistmentFromFile(
+	fsys fs.FS,
+	filename string,
+	unit_files *UnitFiles,
+) (*Enlistment, error) {
 	file, err := fsys.Open(filename)
 
 	if err != nil {
@@ -267,22 +298,5 @@ func NewRecordEnlistmentFromFile(fsys fs.FS, filename string, unit_files *UnitFi
 	}
 	defer file.Close()
 
-	return NewRecordEnlistmentFromReader(file, unit_files)
-}
-
-func (e *Enlistment) scaleRecords(unit_files *UnitFiles) (records RecordSlice) {
-	scale := e.options.scale
-
-	units := (*unit_files)[e.unit_file]
-
-	units.makeOrderedSliceUpTo(scale.Unit.Name)
-
-	records = make(RecordSlice, 0, len(e.records))
-
-	for _, r := range e.records {
-		new := r.scale(e.ref, scale)
-
-	}
-
-	return records
+	return NewEnlistmentFromReader(file, unit_files)
 }

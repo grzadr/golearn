@@ -25,7 +25,41 @@ func (u *Unit) isEmpty() bool {
 	return u.multiplier == 0.0
 }
 
-type UnitRecords map[string]Unit
+type UnitsMap map[string]Unit
+
+type UnitRecords struct {
+	units     UnitsMap
+	base_unit Unit
+}
+
+func makeUnitRecords() UnitRecords {
+	return UnitRecords{
+		units:     make(UnitsMap),
+		base_unit: Unit{},
+	}
+}
+
+func (ur *UnitRecords) setUnit(unit Unit) {
+	ur.units[unit.Name] = unit
+
+	if unit.multiplier == 1.0 {
+		ur.base_unit = unit
+	}
+}
+
+func (ur *UnitRecords) setUnitAliased(alias string, unit Unit) {
+	ur.units[alias] = unit
+}
+
+func (ur *UnitRecords) findUnit(alias string) (unit Unit, found bool) {
+	unit, found = ur.units[alias]
+
+	return unit, found
+}
+
+func (ur *UnitRecords) Len() int {
+	return len(ur.units)
+}
 
 type UnitSlice []Unit
 
@@ -33,52 +67,37 @@ type UnitFiles map[string]UnitRecords
 
 var embedded_units *UnitFiles
 
-func newUnitRecords(json_data []byte) (UnitRecords, error) {
-	result := make(UnitRecords)
+func newUnitRecords(json_data []byte) (records UnitRecords, err error) {
+	records = makeUnitRecords()
 
 	for _, next := range IterUnitEntries(json_data) {
 		if next.Err != nil {
-			return make(UnitRecords), next.Err
+			return records, next.Err
 		}
 
 		unit := Unit{Name: next.Entry.Name, multiplier: next.Entry.Value}
 
-		result[unit.Name] = unit
+		records.setUnit(unit)
 
 		for _, alias := range next.Entry.Aliases {
-			result[alias] = unit
+			records.setUnitAliased(alias, unit)
 		}
 	}
 
-	return result, nil
+	return records, nil
 }
 
-func (r *UnitRecords) findUnit(alias string) (Unit, bool) {
-	unit, found := (*r)[alias]
-
-	return unit, found
-}
-
-func (r *UnitRecords) len() int {
-	return len(*r)
-}
-
-func (r *UnitRecords) makeOrderedSliceUpTo(last_name string) (
-	units UnitSlice, err error,
+func (ur *UnitRecords) makeOrderedSliceUpTo(last_value float64) (
+	units UnitSlice,
 ) {
-	if r.len() == 0 {
-		return units, nil
+	if ur.Len() == 0 {
+		return units
 	}
-	units = make(UnitSlice, 0, r.len())
-	last_unit, found := r.findUnit(last_name)
 
-	units = append(units, last_unit)
+	units = make(UnitSlice, 0, ur.Len())
 
-	if !found {
-		return units, fmt.Errorf("Failed to find unit %s", last_name)
-	}
-	for unit := range maps.Values(*r) {
-		if unit.multiplier < last_unit.multiplier {
+	for unit := range maps.Values(ur.units) {
+		if unit.multiplier <= last_value {
 			units = append(units, unit)
 		}
 	}
@@ -90,15 +109,14 @@ func (r *UnitRecords) makeOrderedSliceUpTo(last_name string) (
 		},
 	)
 
-	return units, nil
+	return units
 }
 
 func newUnitRecordsFromFS(fsys fs.FS, entries_path string) (UnitRecords, error) {
-
 	data, err := fs.ReadFile(fsys, entries_path)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to read %s: %w", entries_path, err)
+		return makeUnitRecords(), fmt.Errorf("failed to read %s: %w", entries_path, err)
 	}
 
 	return newUnitRecords(data)
