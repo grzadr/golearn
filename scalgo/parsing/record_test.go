@@ -43,7 +43,7 @@ func TestNewRecord(t *testing.T) {
 
 	expected_unit_file := "time"
 
-	record, unit_file, err := newRecord(query, embedded_units)
+	record, unit_file, err := newRecord(query, EmbeddedUnits)
 
 	if err != nil {
 		t.Errorf("newRecord returned an error: %v", err)
@@ -88,7 +88,7 @@ func TestNewRecordError(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		record, unit_file, err := newRecord(c.input, embedded_units)
+		record, unit_file, err := newRecord(c.input, EmbeddedUnits)
 
 		if !record.isEmpty() {
 			t.Errorf("Test %s: Expected nil, got %v", c.name, record)

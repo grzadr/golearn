@@ -72,7 +72,7 @@ func newOptions() EnlistmentOptions {
 
 type RecordSlice []Record
 
-func (rs *RecordSlice) str(units *UnitRecords, ref Record, max_units int) iter.Seq[string] {
+func (rs *RecordSlice) Str(units *UnitRecords, ref Record, max_units int) iter.Seq[string] {
 	return func(yield func(string) bool) {
 		picked_units := units.makeOrderedSliceUpTo(ref.getBaseValue())
 
@@ -223,7 +223,7 @@ func (e *Enlistment) appendLine(line string, unit_files *UnitFiles) error {
 	return nil
 }
 
-func (e *Enlistment) scaleRecords(unit_files *UnitFiles) (
+func (e *Enlistment) getScaledRecords(unit_files *UnitFiles) (
 	records RecordSlice, err error,
 ) {
 	scale := e.options.scale
@@ -244,7 +244,24 @@ func (e *Enlistment) scaleRecords(unit_files *UnitFiles) (
 	return records, nil
 }
 
-func ScanReaderIntoEnlistment(reader io.Reader, unit_files *UnitFiles) (enlistment *Enlistment, err error) {
+func (e *Enlistment) ScaleRecords(unit_files *UnitFiles, max_units int) iter.Seq2[string, error] {
+	return func(yield func(string, error) bool) {
+		scaled, err := e.getScaledRecords(unit_files)
+
+		if err != nil {
+			yield("", err)
+			return
+		}
+		units := (*unit_files)[e.unit_file]
+		for s := range scaled.Str(&units, *e.ref, max_units) {
+			if !yield(s, nil) {
+				return
+			}
+		}
+	}
+}
+
+func scanReaderIntoEnlistment(reader io.Reader, unit_files *UnitFiles) (enlistment *Enlistment, err error) {
 	enlistment = NewEnlistment()
 	scanner := bufio.NewScanner(reader)
 
@@ -274,7 +291,7 @@ func ScanReaderIntoEnlistment(reader io.Reader, unit_files *UnitFiles) (enlistme
 }
 
 func NewEnlistmentFromReader(reader io.Reader, unit_files *UnitFiles) (*Enlistment, error) {
-	enlistment, err := ScanReaderIntoEnlistment(reader, unit_files)
+	enlistment, err := scanReaderIntoEnlistment(reader, unit_files)
 	if err != nil {
 		return enlistment, err
 	}

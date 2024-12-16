@@ -377,7 +377,7 @@ func helperCompareEnlistment(ref *Enlistment, sub *Enlistment) []error {
 func TestNewRecordEnlistmentFromReader(t *testing.T) {
 	reader := strings.NewReader(EnlistmentTestVarBasicString)
 
-	enlistment, err := NewEnlistmentFromReader(reader, embedded_units)
+	enlistment, err := NewEnlistmentFromReader(reader, EmbeddedUnits)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -392,7 +392,7 @@ func TestNewRecordEnlistmentFromReader(t *testing.T) {
 func TestNewRecordEnlistmentReverse(t *testing.T) {
 	reader := strings.NewReader(EnlistmentTestVarReversedString)
 
-	enlistment, err := NewEnlistmentFromReader(reader, embedded_units)
+	enlistment, err := NewEnlistmentFromReader(reader, EmbeddedUnits)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -407,7 +407,7 @@ func TestNewRecordEnlistmentReverse(t *testing.T) {
 func TestNewRecordEnlistmentUnsorted(t *testing.T) {
 	reader := strings.NewReader(EnlistmentTestVarUnsortedString)
 
-	enlistment, err := NewEnlistmentFromReader(reader, embedded_units)
+	enlistment, err := NewEnlistmentFromReader(reader, EmbeddedUnits)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -429,7 +429,7 @@ func TestNewRecordEnlistmentFromFile(t *testing.T) {
 	enlistment, err := NewEnlistmentFromFile(
 		enlistmentTestFS,
 		"test_enlistment.txt",
-		embedded_units,
+		EmbeddedUnits,
 	)
 
 	if err != nil {
@@ -476,7 +476,7 @@ var FixtureScaledRecordSlice = RecordSlice{
 }
 
 func TestEnlistmentScaleRecords(t *testing.T) {
-	result, err := EnlistmentTestVarBasicObj.scaleRecords(embedded_units)
+	result, err := EnlistmentTestVarBasicObj.getScaledRecords(EmbeddedUnits)
 
 	if err != nil {
 		t.Error(err)
@@ -497,10 +497,10 @@ var FixtureExpectedRecordSliceStr = []string{
 }
 
 func TestRecordSliceStr(t *testing.T) {
-	time_units := (*embedded_units)["time"]
+	time_units := (*EmbeddedUnits)["time"]
 	ref := FixtureScaledRecordSlice[0]
 
-	result := slices.Collect(FixtureScaledRecordSlice.str(&time_units, ref, 3))
+	result := slices.Collect(FixtureScaledRecordSlice.Str(&time_units, ref, 3))
 
 	if len(result) != len(FixtureExpectedRecordSliceStr) {
 		t.Errorf(

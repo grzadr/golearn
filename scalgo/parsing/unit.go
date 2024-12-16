@@ -65,7 +65,7 @@ type UnitSlice []Unit
 
 type UnitFiles map[string]UnitRecords
 
-var embedded_units *UnitFiles
+var EmbeddedUnits *UnitFiles
 
 func newUnitRecords(json_data []byte) (records UnitRecords, err error) {
 	records = makeUnitRecords()
@@ -180,5 +180,5 @@ func init() {
 		panic(err)
 	}
 
-	embedded_units = &files
+	EmbeddedUnits = &files
 }
