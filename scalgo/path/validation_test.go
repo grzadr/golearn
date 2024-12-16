@@ -113,29 +113,54 @@ func TestPathValidator_Validate(t *testing.T) {
 		},
 		{
 			name:          "Permission denied",
-			path:          regularFile,
 			expectError:   true,
 			errorContains: "error accessing file",
 			setup: func() string {
-				// Create a file with no permissions at all
-				noReadFile := filepath.Join(tempDir, "noperm.txt")
+				// Create a file in a subdirectory with no read permissions
+				noPermDir := filepath.Join(tempDir, "noperm")
+				if err := os.Mkdir(noPermDir, 0755); err != nil {
+					t.Fatal(err)
+				}
+
+				noReadFile := filepath.Join(noPermDir, "noperm.txt")
 				if err := os.WriteFile(noReadFile, []byte("test"), 0644); err != nil {
 					t.Fatal(err)
 				}
-				// Remove all permissions
+
+				// First remove all permissions from the file
 				if err := os.Chmod(noReadFile, 0000); err != nil {
 					t.Fatal(err)
 				}
+
+				// Then remove permissions from the directory
+				if err := os.Chmod(noPermDir, 0000); err != nil {
+					t.Fatal(err)
+				}
+
 				return noReadFile
 			},
 			cleanup: func(path string) error {
-				// We need to restore permissions first to be able to remove the file
-				if err := os.Chmod(path, 0644); err != nil {
-					return fmt.Errorf("failed to restore permissions: %w", err)
+				// Restore directory permissions first
+				dir := filepath.Dir(path)
+				if err := os.Chmod(dir, 0755); err != nil {
+					return fmt.Errorf("failed to restore directory permissions: %w", err)
 				}
+
+				// Then restore file permissions
+				if err := os.Chmod(path, 0644); err != nil {
+					return fmt.Errorf("failed to restore file permissions: %w", err)
+				}
+
+				// Clean up file
 				if err := os.Remove(path); err != nil {
 					return fmt.Errorf("failed to remove test file: %w", err)
 				}
+
+				// Clean up directory
+				if err := os.Remove(dir); err != nil {
+					return fmt.Errorf("failed to remove test directory: %w", err)
+				}
+
 				return nil
 			},
 		},
@@ -154,7 +179,7 @@ func TestPathValidator_Validate(t *testing.T) {
 			defer func() {
 				if tt.cleanup != nil {
 					if err := tt.cleanup(testPath); err != nil {
-						t.Errorf("Cleanup failed: %v", err)
+						t.Logf("Cleanup failed: %v", err)
 					}
 				}
 			}()
@@ -171,7 +196,7 @@ func TestPathValidator_Validate(t *testing.T) {
 					t.Errorf("Expected error containing '%s', got nil", tt.errorContains)
 					return
 				}
-				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+				if !strings.Contains(err.Error(), tt.errorContains) {
 					t.Errorf("Expected error containing '%s', got '%v'", tt.errorContains, err)
 				}
 				return
@@ -318,5 +343,43 @@ func TestValidatePath(t *testing.T) {
 			}
 			defer f.Close()
 		})
+	}
+}
+
+func TestNewPathValidator_AbsolutePathError(t *testing.T) {
+	// Save current directory
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a directory and remove it to cause Abs to fail
+	tempDir := t.TempDir()
+	workDir := filepath.Join(tempDir, "nonexistent")
+	if err := os.Mkdir(workDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Change to the directory and then remove it
+	if err := os.Chdir(workDir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(workDir); err != nil {
+		t.Fatal(err)
+	}
+
+	// Try to create a PathValidator - should fail because working directory doesn't exist
+	_, err = NewPathValidator("test.txt")
+
+	// Restore working directory
+	if err := os.Chdir(originalWd); err != nil {
+		t.Fatal(err)
+	}
+
+	if err == nil {
+		t.Error("Expected error about absolute path resolution, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to resolve absolute path") {
+		t.Errorf("Expected error about absolute path resolution, got: %v", err)
 	}
 }
