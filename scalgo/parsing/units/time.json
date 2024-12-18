@@ -1,0 +1,74 @@
+{
+    "second": {
+        "value": 1,
+        "aliases": [
+            "seconds",
+            "sec",
+            "s"
+        ]
+    },
+    "minute": {
+        "value": 60,
+        "aliases": [
+            "minutes",
+            "min",
+            "m"
+        ]
+    },
+    "hour": {
+        "value": 3600,
+        "aliases": [
+            "hours",
+            "hr",
+            "h"
+        ]
+    },
+    "day": {
+        "value": 86400,
+        "aliases": [
+            "days",
+            "d"
+        ]
+    },
+    "week": {
+        "value": 604800,
+        "aliases": [
+            "weeks",
+            "wk",
+            "w"
+        ]
+    },
+    "month": {
+        "value": 2592000,
+        "aliases": [
+            "months",
+            "mo"
+        ]
+    },
+    "year": {
+        "value": 31536000,
+        "aliases": [
+            "years",
+            "yr",
+            "y"
+        ]
+    },
+    "decade": {
+        "value": 315360000,
+        "aliases": [
+            "decades"
+        ]
+    },
+    "century": {
+        "value": 3153600000,
+        "aliases": [
+            "centuries"
+        ]
+    },
+    "millennium": {
+        "value": 31536000000,
+        "aliases": [
+            "millennia"
+        ]
+    }
+}
